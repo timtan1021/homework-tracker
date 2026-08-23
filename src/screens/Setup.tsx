@@ -12,6 +12,13 @@ export function Setup() {
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
+
+    // 年度は編集画面が無く、間違えると直せないため保存前に検証する
+    if (!Number.isInteger(year) || year < 2000 || year > 2100) {
+      setError("年度は2000から2100までの数字で入力してください");
+      return;
+    }
+
     setSaving(true);
     setError(null);
 
@@ -66,7 +73,7 @@ export function Setup() {
         <button
           type="submit"
           disabled={saving}
-          className="bg-ai rounded px-4 py-3 font-bold text-white disabled:opacity-50"
+          className="bg-ai text-gayoshi rounded px-4 py-3 font-bold disabled:opacity-50"
         >
           クラスをつくる
         </button>

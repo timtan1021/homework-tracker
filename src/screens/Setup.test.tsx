@@ -40,6 +40,20 @@ describe("初回セットアップ", () => {
     expect(await getActiveCohort()).toBeNull();
   });
 
+  it("年度が空なら保存せずエラーを出す", async () => {
+    const user = userEvent.setup();
+    renderAt("/setup");
+
+    await user.clear(await screen.findByLabelText("年度"));
+    await user.type(await screen.findByLabelText("クラス名"), "5年1組");
+    await user.click(screen.getByRole("button", { name: "クラスをつくる" }));
+
+    expect(
+      await screen.findByText("年度は2000から2100までの数字で入力してください"),
+    ).toBeInTheDocument();
+    expect(await getActiveCohort()).toBeNull();
+  });
+
   it("入力して保存するとcohortが作られ名簿に移る", async () => {
     const user = userEvent.setup();
     renderAt("/setup");
