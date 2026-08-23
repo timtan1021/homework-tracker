@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { useFreshDb } from "../test/db";
 import { ValidationError } from "./errors";
 import { createCohort, getActiveCohort } from "./cohorts";
+import { getDb } from "./schema";
 
 useFreshDb();
 
@@ -23,6 +24,15 @@ describe("createCohort", () => {
 
     const active = await getActiveCohort();
     expect(active?.id).toBe(second.id);
+
+    // getActiveCohort() は getAll().find() で先頭一致を返すだけなので、
+    // 無効化処理そのものが壊れていないかを db.getAll() で直接検証する。
+    // （主キーはランダムなUUIDのため、getAll() の並び順は作成順と無関係）
+    const db = await getDb();
+    const all = await db.getAll("cohorts");
+    const activeOnes = all.filter((cohort) => cohort.isActive);
+    expect(activeOnes).toHaveLength(1);
+    expect(activeOnes[0]?.id).toBe(second.id);
   });
 
   it("クラス名の前後の空白を取り除く", async () => {
