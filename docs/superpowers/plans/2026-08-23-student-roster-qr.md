@@ -1357,7 +1357,7 @@ git commit -m "feat: QRペイロードの組み立てとSVG生成を追加"
 - Consumes: `currentSchoolYear`（`../lib/schoolYear`）/ `createCohort`, `getActiveCohort`（`../db/cohorts`）/ `ValidationError`（`../db/errors`）/ `Cohort`（`../db/schema`）
 - Produces:
   - `type AsyncState<T> = { status: "loading" } | { status: "ready"; data: T } | { status: "error"; message: string }`
-  - `useAsync<T>(load: () => Promise<T>, deps: unknown[]): AsyncState<T> & { reload: () => void }`
+  - `useAsync<T>(load: () => Promise<T>, key: string): AsyncState<T> & { reload: () => void }` — `key` が変わるか `reload()` で読み直す
   - `<FullScreenMessage tone?: "normal" | "error">{children}</FullScreenMessage>`
   - `<CohortGate>{children}</CohortGate>` — cohortが無ければ `/setup` へリダイレクト
   - `useActiveCohort(): Cohort` — `CohortGate` の中でのみ使える
@@ -1369,16 +1369,23 @@ git commit -m "feat: QRペイロードの組み立てとSVG生成を追加"
 `src/hooks/useAsync.ts`。すべての画面がこの1つの形でデータを読む。
 
 ```ts
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export type AsyncState<T> =
   | { status: "loading" }
   | { status: "ready"; data: T }
   | { status: "error"; message: string };
 
+/**
+ * 非同期の読み込みを1つの形にまとめる。
+ *
+ * `key` が変わったとき、または `reload()` が呼ばれたときに読み直す。
+ * 依存配列ではなく文字列キーを取るのは、配列を展開すると依存配列の長さが
+ * 可変になりフックの規則を破るため。
+ */
 export function useAsync<T>(
   load: () => Promise<T>,
-  deps: unknown[],
+  key: string,
 ): AsyncState<T> & { reload: () => void } {
   const [state, setState] = useState<AsyncState<T>>({ status: "loading" });
   const [nonce, setNonce] = useState(0);
@@ -1387,11 +1394,19 @@ export function useAsync<T>(
     setNonce((current) => current + 1);
   }, []);
 
+  // load は毎レンダー新しい関数になるので、最新の実装をrefで持つ。
+  // これで load を依存に入れずに済み、無限ループを避けられる。
+  const loadRef = useRef(load);
+  useEffect(() => {
+    loadRef.current = load;
+  });
+
   useEffect(() => {
     let cancelled = false;
     setState({ status: "loading" });
 
-    load()
+    loadRef
+      .current()
       .then((data) => {
         if (!cancelled) {
           setState({ status: "ready", data });
@@ -1412,9 +1427,7 @@ export function useAsync<T>(
     return () => {
       cancelled = true;
     };
-    // load は毎レンダーで新しい関数になるため deps で制御する
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [...deps, nonce]);
+  }, [key, nonce]);
 
   return { ...state, reload };
 }
@@ -1475,7 +1488,7 @@ export function useActiveCohort(): Cohort {
 }
 
 export function CohortGate({ children }: { children: ReactNode }) {
-  const state = useAsync(() => getActiveCohort(), []);
+  const state = useAsync(() => getActiveCohort(), "active-cohort");
 
   if (state.status === "loading") {
     return <FullScreenMessage>読み込んでいます</FullScreenMessage>;
@@ -1923,7 +1936,7 @@ import { useAsync, type AsyncState } from "./useAsync";
 export function useStudents(
   cohortId: string,
 ): AsyncState<Student[]> & { reload: () => void } {
-  return useAsync(() => listStudents(cohortId), [cohortId]);
+  return useAsync(() => listStudents(cohortId), `students:${cohortId}`);
 }
 ```
 
@@ -2774,7 +2787,10 @@ function StudentNewBody() {
   const cohort = useActiveCohort();
   const navigate = useNavigate();
   const showNames = useSetting("showStudentNames");
-  const suggested = useAsync(() => nextAttendanceNumber(cohort.id), [cohort.id]);
+  const suggested = useAsync(
+    () => nextAttendanceNumber(cohort.id),
+    `next-number:${cohort.id}`,
+  );
 
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -2881,7 +2897,7 @@ type Pending = "transferOut" | "delete" | null;
 function StudentEditBody({ studentId }: { studentId: string }) {
   const navigate = useNavigate();
   const showNames = useSetting("showStudentNames");
-  const loaded = useAsync(() => getStudent(studentId), [studentId]);
+  const loaded = useAsync(() => getStudent(studentId), `student:${studentId}`);
 
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
