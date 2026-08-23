@@ -1,0 +1,42 @@
+@import "tailwindcss";
+
+@theme {
+  --color-gayoshi: #fbfaf7;
+  --color-sumi: #1a1a1f;
+  --color-ai: #22406b;
+  --color-kogan: #c9d6e4;
+  --color-shu: #d8452e;
+
+  --font-ui: "BIZ UDPGothic", system-ui, sans-serif;
+  --font-num: "BIZ UDGothic", ui-monospace, monospace;
+  --font-display: "Klee One", serif;
+}
+
+/* 欠番セルの斜めハッチ */
+@utility hatch {
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--color-kogan) 0 1px,
+    transparent 1px 7px
+  );
+}
+
+body {
+  background-color: var(--color-gayoshi);
+  color: var(--color-sumi);
+  font-family: var(--font-ui);
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-ai);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
