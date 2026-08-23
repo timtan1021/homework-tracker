@@ -16,7 +16,7 @@
 
 - **ネットワークアクセスを一切書かない。** `fetch`、CDNの`<link>`、外部URLの画像は使用禁止。フォントは `@fontsource/*` でバンドルする。
 - **UIの文言はすべて日本語。** エラー文は何が起きたかと次にどうするかを示す。謝罪表現（「申し訳ありません」等）は使わない。
-- **配色トークンは5色のみ**: 画用紙 `#FBFAF7` / 墨 `#1A1A1F` / 藍 `#22406B` / 方眼 `#C9D6E4` / 朱 `#D8452E`。**朱はステップ1では「完全に削除」の確認ダイアログにのみ使う。** それ以外の場所に朱を出してはいけない。
+- **配色トークンは5色のみ**: 画用紙 `#FBFAF7` / 墨 `#1A1A1F` / 藍 `#22406B` / 方眼 `#C9D6E4` / 朱 `#D8452E`。Tailwind素のカラー（`text-white`、`bg-gray-*` 等）を使ってはいけない。藍や朱の上に載せる明色は `text-gayoshi` を使う。**朱はステップ1では「完全に削除」の確認ダイアログにのみ使う。** それ以外の場所に朱を出してはいけない。
 - **書体**: 本文・UIは `BIZ UDPGothic`、出席番号などの数値は `BIZ UDGothic`（700）、見出しは `Klee One`（600）。**Klee One を本文に使わない。**
 - **`crypto.randomUUID()` を直接呼ばない。** http:// のLAN配信では secure context ではないため未定義になる。必ず `newId()`（Task 2）を使う。
 - **QRのペイロードは `hw1:` + 生徒の内部ID。** 出席番号を埋め込んではいけない。誤り訂正レベルは `Q`。
@@ -1593,6 +1593,13 @@ export function Setup() {
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
+
+    // 年度は編集画面が無く、間違えると直せないため保存前に検証する
+    if (!Number.isInteger(year) || year < 2000 || year > 2100) {
+      setError("年度は2000から2100までの数字で入力してください");
+      return;
+    }
+
     setSaving(true);
     setError(null);
 
@@ -1647,7 +1654,7 @@ export function Setup() {
         <button
           type="submit"
           disabled={saving}
-          className="bg-ai rounded px-4 py-3 font-bold text-white disabled:opacity-50"
+          className="bg-ai rounded px-4 py-3 font-bold text-gayoshi disabled:opacity-50"
         >
           クラスをつくる
         </button>
@@ -2151,7 +2158,7 @@ function RosterBody() {
       <nav className="mt-auto flex gap-3 pt-4">
         <Link
           to="/roster/new"
-          className="bg-ai flex-1 rounded px-4 py-3 text-center font-bold text-white"
+          className="bg-ai flex-1 rounded px-4 py-3 text-center font-bold text-gayoshi"
         >
           生徒を追加
         </Link>
@@ -2649,7 +2656,7 @@ export function ConfirmDialog({
           <button
             type="button"
             onClick={onConfirm}
-            className={`flex-1 rounded px-4 py-2 font-bold text-white ${
+            className={`flex-1 rounded px-4 py-2 font-bold text-gayoshi ${
               tone === "danger" ? "bg-shu" : "bg-ai"
             }`}
           >
@@ -2748,7 +2755,7 @@ export function StudentForm({
         <button
           type="submit"
           disabled={submitting}
-          className="bg-ai rounded px-4 py-3 font-bold text-white disabled:opacity-50"
+          className="bg-ai rounded px-4 py-3 font-bold text-gayoshi disabled:opacity-50"
         >
           {primaryLabel}
         </button>
@@ -3505,7 +3512,7 @@ function PrintBody() {
           <button
             type="button"
             onClick={() => window.print()}
-            className="bg-ai rounded px-4 py-3 font-bold text-white"
+            className="bg-ai rounded px-4 py-3 font-bold text-gayoshi"
           >
             印刷する
           </button>
