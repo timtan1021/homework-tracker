@@ -120,15 +120,16 @@ body {
 /* --- 花丸 --- */
 
 .hanamaru-circle {
-  /* 半径34の円周は約214 */
-  stroke-dasharray: 214;
-  stroke-dashoffset: 214;
+  /* 半径36の円周は約226。半径を変えたらこの値も直すこと。 */
+  stroke-dasharray: 226;
+  stroke-dashoffset: 226;
   animation: hanamaru-draw 0.18s ease-out forwards;
 }
 
 .hanamaru-petals {
-  stroke-dasharray: 200;
-  stroke-dashoffset: 200;
+  /* 花弁4枚の総延長。実測より多めに取る（足りないと描き切れない） */
+  stroke-dasharray: 320;
+  stroke-dashoffset: 320;
   /* 円を描き終えてから、ゆっくり */
   animation: hanamaru-draw 0.27s ease-in-out 0.18s forwards;
 }
