@@ -3,7 +3,9 @@ import { SetupGate } from "./components/SetupGate";
 import { Print } from "./screens/Print";
 import { Roster } from "./screens/Roster";
 import { Settings } from "./screens/Settings";
+import { SubmissionEdit } from "./screens/SubmissionEdit";
 import { SubmissionList } from "./screens/SubmissionList";
+import { SubmissionNew } from "./screens/SubmissionNew";
 import { Setup } from "./screens/Setup";
 import { StudentEdit } from "./screens/StudentEdit";
 import { StudentNew } from "./screens/StudentNew";
@@ -25,6 +27,8 @@ export function AppRoutes() {
       <Route path="/print" element={<Print />} />
       <Route path="/settings" element={<Settings />} />
       <Route path="/submissions" element={<SubmissionList />} />
+      <Route path="/submissions/new" element={<SubmissionNew />} />
+      <Route path="/submissions/:id/edit" element={<SubmissionEdit />} />
       <Route path="*" element={<Navigate to="/roster" replace />} />
     </Routes>
   );
