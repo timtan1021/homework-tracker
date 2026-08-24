@@ -1,0 +1,4 @@
+# 静的ホストで /roster などを直接開いた・再読み込みしたときに
+# index.html を返す。Cloudflare Pages と Netlify の両方がこの
+# ファイルを読む。無いと 404 になる。
+/*    /index.html   200
