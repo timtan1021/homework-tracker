@@ -57,8 +57,14 @@ function RosterBody() {
 
       <nav className="mt-auto flex flex-col gap-3 pt-4">
         <Link
+          to="/scan"
+          className="bg-ai rounded px-4 py-4 text-center text-xl font-bold text-gayoshi"
+        >
+          提出チェック
+        </Link>
+        <Link
           to="/roster/new"
-          className="bg-ai rounded px-4 py-3 text-center font-bold text-gayoshi"
+          className="border-ai text-ai rounded border-2 px-4 py-3 text-center font-bold"
         >
           生徒を追加
         </Link>
