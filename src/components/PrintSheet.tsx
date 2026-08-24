@@ -46,7 +46,8 @@ export function PrintSheet({
           data-testid="print-page"
           className="print-page mx-auto bg-white p-0"
         >
-          <p className="print-page-title text-kogan text-[8pt]">
+          {/* 方眼色は白紙上で約1.3:1しかなく8ptでは読めない。取り違え防止が役割なので藍を使う */}
+          <p className="print-page-title text-ai text-[8pt]">
             {cohort.year}年度 {cohort.className}
           </p>
           <div className="print-card-grid">

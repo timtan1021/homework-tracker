@@ -58,8 +58,9 @@ export function ConfirmDialog({
         className="bg-gayoshi w-full max-w-sm rounded p-5"
       >
         <h2
-          className={`font-display text-xl ${
-            tone === "danger" ? "text-shu" : "text-ai"
+          // 朱はコントラスト比が約4.3:1のため18pt以上でのみ使う
+          className={`font-display ${
+            tone === "danger" ? "text-shu text-2xl" : "text-ai text-xl"
           }`}
         >
           {title}

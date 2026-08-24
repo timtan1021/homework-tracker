@@ -1,4 +1,5 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router";
+import { SetupGate } from "./components/SetupGate";
 import { Print } from "./screens/Print";
 import { Roster } from "./screens/Roster";
 import { Settings } from "./screens/Settings";
@@ -9,7 +10,14 @@ import { StudentNew } from "./screens/StudentNew";
 export function AppRoutes() {
   return (
     <Routes>
-      <Route path="/setup" element={<Setup />} />
+      <Route
+        path="/setup"
+        element={
+          <SetupGate>
+            <Setup />
+          </SetupGate>
+        }
+      />
       <Route path="/roster" element={<Roster />} />
       <Route path="/roster/new" element={<StudentNew />} />
       <Route path="/roster/:id/edit" element={<StudentEdit />} />

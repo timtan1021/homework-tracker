@@ -39,6 +39,12 @@ function SettingsBody() {
         </div>
       </div>
 
+      {showNames.error !== null && (
+        <p role="alert" className="mt-3 text-sm font-bold">
+          {showNames.error}
+        </p>
+      )}
+
       <Link to="/roster" className="text-ai mt-8 inline-block underline">
         名簿に戻る
       </Link>

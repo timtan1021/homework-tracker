@@ -56,7 +56,14 @@ function PrintBody() {
         </div>
       </div>
 
-      <div className="overflow-x-auto">
+      {/*
+        A4実寸（190mm）はスマホ幅より広いので画面では横スクロールが要る。
+        ただし overflow が visible 以外の要素はCSSの断片化で分割不能になり、
+        中の break-after: page が無視されて全ページが1枚に切り詰められる。
+        そのため印刷時は overflow: visible に戻している（index.css の
+        @media print 内）。この指定を消すと3ページ分が1枚になる。
+      */}
+      <div className="print-preview overflow-x-auto">
         <PrintSheet
           cohort={cohort}
           students={active}

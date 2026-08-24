@@ -132,7 +132,7 @@ function StudentEditBody({ studentId }: { studentId: string }) {
           type="button"
           disabled={submitting}
           onClick={() => setPending("delete")}
-          className="text-shu mt-3 font-bold underline disabled:opacity-50"
+          className="text-ai mt-3 font-bold underline disabled:opacity-50"
         >
           完全に削除
         </button>

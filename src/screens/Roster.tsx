@@ -16,7 +16,12 @@ function RosterBody() {
     return <FullScreenMessage>読み込んでいます</FullScreenMessage>;
   }
   if (students.status === "error") {
-    return <FullScreenMessage tone="error">{students.message}</FullScreenMessage>;
+    // 名簿画面自身のエラーなので、名簿へのリンクは行き先が同じで無意味
+    return (
+      <FullScreenMessage tone="error" showBackLink={false}>
+        {students.message}
+      </FullScreenMessage>
+    );
   }
 
   const list = students.data;

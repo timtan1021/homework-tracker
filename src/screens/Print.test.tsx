@@ -85,6 +85,16 @@ describe("ページ分け", () => {
     expect(await screen.findAllByTestId("print-page")).toHaveLength(1);
   });
 
+  it("シートの包みに print-preview クラスが付いている", async () => {
+    // CSS側で印刷時に overflow を戻していても、このクラスが外れると
+    // 解除が効かず全ページが1枚に切り詰められる。両方が揃って初めて機能する。
+    await addStudents(1);
+    renderPrint();
+
+    const page = (await screen.findAllByTestId("print-page"))[0];
+    expect(page.closest(".print-preview")).not.toBeNull();
+  });
+
   it("13枚で2ページになる", async () => {
     await addStudents(13);
     renderPrint();
@@ -237,5 +247,30 @@ describe("CSSと寸法定数の整合性", () => {
     const block = extractBlock(".qr-card");
     expect(extractMm(block, ".qr-card", "width")).toBe(CARD_WIDTH_MM);
     expect(extractMm(block, ".qr-card", "height")).toBe(CARD_HEIGHT_MM);
+  });
+
+  /*
+    印刷プレビューは画面では横スクロールさせるが、overflow が visible 以外の
+    要素はCSSの断片化で分割不能になり、中の break-after: page が無視されて
+    全ページが1枚に切り詰められる。印刷時に overflow を戻す指定が消えると
+    このアプリ唯一の成果物が壊れるので、宣言の存在自体を守る。
+    jsdomは印刷メディアもページ分割も評価できないため、CSSの記述を検証する。
+  */
+  describe("印刷時に横スクロールの overflow を解除する", () => {
+    const printMediaCss =
+      printMediaIndex === -1 ? "" : css.slice(printMediaIndex);
+
+    it("@media print の中に .print-preview の overflow: visible がある", () => {
+      expect(printMediaIndex).toBeGreaterThan(-1);
+      expect(printMediaCss).toMatch(
+        /\.print-preview\s*\{[^}]*overflow\s*:\s*visible/,
+      );
+    });
+
+    it("画面側では .print-preview に overflow を指定していない", () => {
+      // 画面側のスクロールはTailwindの overflow-x-auto が担う。
+      // ここに素のCSSで overflow を書くと印刷時の解除と競合する。
+      expect(baseCss).not.toMatch(/\.print-preview\s*\{/);
+    });
   });
 });

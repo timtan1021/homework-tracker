@@ -26,7 +26,7 @@ export function StudentCell({
           : "border-ai text-sumi border-2",
       ].join(" ")}
     >
-      <span className="font-num text-3xl leading-none font-bold">
+      <span className="font-num text-[2rem] leading-none font-bold">
         {student.attendanceNumber}
       </span>
       {showName && student.name !== "" && (

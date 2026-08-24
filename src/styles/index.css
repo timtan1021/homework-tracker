@@ -95,6 +95,15 @@ body {
     display: none !important;
   }
 
+  /*
+    画面では横スクロールさせるための overflow を、印刷時は必ず解除する。
+    overflow が visible 以外の要素は断片化において分割不能になり、
+    中の break-after: page が効かず全ページが1枚に切り詰められるため。
+  */
+  .print-preview {
+    overflow: visible;
+  }
+
   .print-page {
     break-after: page;
   }

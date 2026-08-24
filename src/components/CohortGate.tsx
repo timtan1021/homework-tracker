@@ -23,7 +23,12 @@ export function CohortGate({ children }: { children: ReactNode }) {
     return <FullScreenMessage>読み込んでいます</FullScreenMessage>;
   }
   if (state.status === "error") {
-    return <FullScreenMessage tone="error">{state.message}</FullScreenMessage>;
+    // ストレージが使えない状態では名簿も開けないため戻る導線を出さない
+    return (
+      <FullScreenMessage tone="error" showBackLink={false}>
+        {state.message}
+      </FullScreenMessage>
+    );
   }
   if (state.data === null) {
     return <Navigate to="/setup" replace />;
