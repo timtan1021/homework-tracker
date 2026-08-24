@@ -43,15 +43,33 @@ body {
 
 /* --- QRカードの印刷 --- */
 
+/*
+  A4縦の印字領域は 190 × 277mm（210×297 から余白10mm×2を引いた値）。
+  ページ見出しの高さも予算に含めないと最終行が次の用紙へ溢れるため、
+  内訳を明示する:
+    縦: 見出し6 + 余白4 + カード4行240 + 行間3つ18 = 268mm ≤ 277mm（余裕9mm）
+    横: カード3列165 + 列間2つ20 = 185mm ≤ 190mm（余裕5mm）
+  プリンタごとの丸め誤差に耐えるよう余裕を残している。
+  カード寸法・行数・列数を変えるときは、この式を必ず計算し直すこと。
+  （この値を変えたら src/components/PrintSheet.tsx の寸法定数も必ず合わせて直すこと）
+*/
 .print-page {
   width: 190mm; /* A4の印字領域（210mm - 余白10mm × 2） */
+}
+
+/* 高さを明示する。line-height の継承値に依存すると予算が狂うため。 */
+.print-page-title {
+  height: 6mm;
+  line-height: 6mm;
+  margin-bottom: 4mm;
 }
 
 .print-card-grid {
   display: grid;
   grid-template-columns: repeat(3, 55mm);
-  column-gap: 12.5mm;
-  row-gap: 12.3mm;
+  column-gap: 10mm;
+  row-gap: 6mm;
+  justify-content: center;
 }
 
 .qr-card {

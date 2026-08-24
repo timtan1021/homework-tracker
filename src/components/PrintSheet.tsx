@@ -1,7 +1,25 @@
 import type { Cohort, Student } from "../db/schema";
 import { QrCard } from "./QrCard";
 
-export const CARDS_PER_PAGE = 12;
+/**
+ * 印刷レイアウトの寸法定数（mm）。src/styles/index.css の
+ * `.print-page` / `.print-page-title` / `.print-card-grid` / `.qr-card`
+ * と値を一致させること。この定数を変えたらCSS側も必ず合わせて直す
+ * （CSSはmm単位をそのまま解決できるがjsdomはできないため、
+ * 寸法の整合性は Print.test.tsx でこの定数を使って検証している）。
+ */
+export const PAGE_WIDTH_MM = 190; // A4印字領域の横幅（210mm - 余白10mm×2）
+export const PAGE_HEIGHT_MM = 277; // A4印字領域の縦幅（297mm - 余白10mm×2）
+export const COLUMNS = 3;
+export const ROWS = 4;
+export const CARD_WIDTH_MM = 55;
+export const CARD_HEIGHT_MM = 60;
+export const COLUMN_GAP_MM = 10;
+export const ROW_GAP_MM = 6;
+export const TITLE_HEIGHT_MM = 6;
+export const TITLE_MARGIN_MM = 4;
+
+export const CARDS_PER_PAGE = COLUMNS * ROWS;
 
 function toPages(students: Student[]): Student[][] {
   const pages: Student[][] = [];
@@ -28,7 +46,7 @@ export function PrintSheet({
           data-testid="print-page"
           className="print-page mx-auto bg-white p-0"
         >
-          <p className="text-kogan mb-3 text-[8pt]">
+          <p className="print-page-title text-kogan text-[8pt]">
             {cohort.year}年度 {cohort.className}
           </p>
           <div className="print-card-grid">

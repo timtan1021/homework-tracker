@@ -3,6 +3,18 @@ import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it } from "vitest";
 import { useFreshDb } from "../test/db";
 import { AppRoutes } from "../App";
+import {
+  CARD_HEIGHT_MM,
+  CARD_WIDTH_MM,
+  COLUMN_GAP_MM,
+  COLUMNS,
+  PAGE_HEIGHT_MM,
+  PAGE_WIDTH_MM,
+  ROW_GAP_MM,
+  ROWS,
+  TITLE_HEIGHT_MM,
+  TITLE_MARGIN_MM,
+} from "../components/PrintSheet";
 import { createCohort } from "../db/cohorts";
 import { setSetting } from "../db/settings";
 import { addStudent, transferOutStudent } from "../db/students";
@@ -124,5 +136,24 @@ describe("生徒が居ないとき", () => {
     expect(
       await screen.findByText("在籍している生徒が居ないため印刷できません"),
     ).toBeInTheDocument();
+  });
+});
+
+// jsdomはmm単位のレイアウトを実測できないため、CSS（src/styles/index.css）と
+// 二重管理している寸法定数の関係式そのものを検証する。値を変えるときは
+// index.css の計算コメントとこのテストの両方を必ず合わせて直すこと。
+describe("印刷レイアウトの寸法", () => {
+  it("カードの横幅がA4印字領域に収まる", () => {
+    const totalWidth = COLUMNS * CARD_WIDTH_MM + (COLUMNS - 1) * COLUMN_GAP_MM;
+    expect(totalWidth).toBeLessThanOrEqual(PAGE_WIDTH_MM);
+  });
+
+  it("見出し込みでカードの縦幅がA4印字領域に収まる", () => {
+    const totalHeight =
+      TITLE_HEIGHT_MM +
+      TITLE_MARGIN_MM +
+      ROWS * CARD_HEIGHT_MM +
+      (ROWS - 1) * ROW_GAP_MM;
+    expect(totalHeight).toBeLessThanOrEqual(PAGE_HEIGHT_MM);
   });
 });
