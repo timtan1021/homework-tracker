@@ -5,7 +5,12 @@
  * 「取り返しのつかない操作」なら、こちらは本来の朱ペンである。
  * トーストも「✓」も出さない。丸がつく、それだけにする。
  */
-export function Hanamaru() {
+export function Hanamaru({
+  className = "size-24",
+}: {
+  /** 置く場所に合わせて大きさを変える。既定は結果表示用の大きさ。 */
+  className?: string;
+} = {}) {
   return (
     <svg
       role="img"
@@ -15,7 +20,7 @@ export function Hanamaru() {
       fill="none"
       strokeWidth={5}
       strokeLinecap="round"
-      className="hanamaru size-24"
+      className={`hanamaru ${className}`}
     >
       {/* 外側の丸。速く描く。 */}
       <circle className="hanamaru-circle" cx="50" cy="50" r="34" />
