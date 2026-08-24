@@ -2612,6 +2612,7 @@ export function ConfirmDialog({
   onCancel: () => void;
 }) {
   const cancelRef = useRef<HTMLButtonElement>(null);
+  const confirmRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     cancelRef.current?.focus();
@@ -2621,8 +2622,29 @@ export function ConfirmDialog({
     function handleKey(event: KeyboardEvent) {
       if (event.key === "Escape") {
         onCancel();
+        return;
       }
+
+      // 背面のページにフォーカスが逃げないよう2つのボタンの間で循環させる。
+      // 記録を消せるダイアログなので、意図しない場所を押せる状態にしない。
+      if (event.key !== "Tab") {
+        return;
+      }
+      const cancel = cancelRef.current;
+      const confirm = confirmRef.current;
+      if (cancel === null || confirm === null) {
+        return;
+      }
+      event.preventDefault();
+      const next =
+        document.activeElement === cancel
+          ? event.shiftKey
+            ? confirm
+            : confirm
+          : cancel;
+      next.focus();
     }
+
     document.addEventListener("keydown", handleKey);
     return () => document.removeEventListener("keydown", handleKey);
   }, [onCancel]);
@@ -2654,6 +2676,7 @@ export function ConfirmDialog({
             やめる
           </button>
           <button
+            ref={confirmRef}
             type="button"
             onClick={onConfirm}
             className={`flex-1 rounded px-4 py-2 font-bold text-gayoshi ${
@@ -2955,6 +2978,7 @@ function StudentEditBody({ studentId }: { studentId: string }) {
 
       <div className="mt-6">
         <StudentForm
+          key={student.id}
           defaultNumber={student.attendanceNumber}
           defaultName={student.name}
           showName={showNames.value}
