@@ -55,19 +55,27 @@ function RosterBody() {
         <RosterGrid students={list} showName={showNames.value} />
       )}
 
-      <nav className="mt-auto flex gap-3 pt-4">
+      <nav className="mt-auto flex flex-col gap-3 pt-4">
         <Link
           to="/roster/new"
-          className="bg-ai flex-1 rounded px-4 py-3 text-center font-bold text-gayoshi"
+          className="bg-ai rounded px-4 py-3 text-center font-bold text-gayoshi"
         >
           生徒を追加
         </Link>
-        <Link
-          to="/print"
-          className="border-ai text-ai flex-1 rounded border-2 px-4 py-3 text-center font-bold"
-        >
-          QRを印刷
-        </Link>
+        <div className="flex gap-3">
+          <Link
+            to="/print"
+            className="border-ai text-ai flex-1 rounded border-2 px-4 py-3 text-center font-bold"
+          >
+            QRを印刷
+          </Link>
+          <Link
+            to="/submissions"
+            className="border-ai text-ai flex-1 rounded border-2 px-4 py-3 text-center font-bold"
+          >
+            提出物の設定
+          </Link>
+        </div>
       </nav>
     </main>
   );
