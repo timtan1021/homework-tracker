@@ -2674,7 +2674,7 @@ export function ConfirmDialog({
 `src/components/StudentForm.tsx`。追加と編集で共有する。
 
 ```tsx
-import { useEffect, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 
 export type StudentFormValues = { attendanceNumber: number; name: string };
 
@@ -2699,17 +2699,12 @@ export function StudentForm({
   onSubmit: (values: StudentFormValues) => void;
   onSecondary?: (values: StudentFormValues) => void;
 }) {
+  // props からの同期用 useEffect は置かない。
+  // 初回描画から effect 実行までの間に入力された値を defaultNumber で
+  // 上書きしてしまうため。番号を進めたいときは呼び出し側が key を変えて
+  // 作り直す（React 公式が薦める「propsが変わったら状態を初期化する」方法）。
   const [numberText, setNumberText] = useState(String(defaultNumber));
   const [name, setName] = useState(defaultName);
-
-  // 「保存して続けて追加」の後に次の番号へ進める
-  useEffect(() => {
-    setNumberText(String(defaultNumber));
-  }, [defaultNumber]);
-
-  useEffect(() => {
-    setName(defaultName);
-  }, [defaultName]);
 
   function values(): StudentFormValues {
     return { attendanceNumber: Number(numberText), name };
@@ -2838,6 +2833,7 @@ function StudentNewBody() {
 
       <div className="mt-6">
         <StudentForm
+          key={suggested.data}
           defaultNumber={suggested.data}
           defaultName=""
           showName={showNames.value}
