@@ -1,5 +1,5 @@
 import { useFreshDb } from "../test/db";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -51,8 +51,7 @@ describe("保存", () => {
     renderEdit(student.id);
 
     const numberField = await screen.findByLabelText("出席番号");
-    await user.clear(numberField);
-    await user.type(numberField, "7");
+    fireEvent.change(numberField, { target: { value: "7" } });
     await user.click(screen.getByRole("button", { name: "保存する" }));
 
     await screen.findByText("在籍1人・欠番0");
@@ -66,8 +65,7 @@ describe("保存", () => {
     renderEdit(second.id);
 
     const numberField = await screen.findByLabelText("出席番号");
-    await user.clear(numberField);
-    await user.type(numberField, "1");
+    fireEvent.change(numberField, { target: { value: "1" } });
     await user.click(screen.getByRole("button", { name: "保存する" }));
 
     expect(
