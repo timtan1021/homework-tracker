@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { URL as NodeURL } from "node:url";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -155,5 +157,85 @@ describe("印刷レイアウトの寸法", () => {
       ROWS * CARD_HEIGHT_MM +
       (ROWS - 1) * ROW_GAP_MM;
     expect(totalHeight).toBeLessThanOrEqual(PAGE_HEIGHT_MM);
+  });
+});
+
+// 上の関係式テストは定数同士しか見ていないため、index.css側だけを書き換えても
+// 気付けない。ここでは実際にCSSファイルを読み、各宣言のmm値を寸法定数と
+// 突き合わせる。値がずれたら（CSSだけ・定数だけ、どちらを直し忘れても）失敗する。
+describe("CSSと寸法定数の整合性", () => {
+  // print media query内は裁ち線・改ページ制御のみで寸法宣言を含まないが、
+  // .print-page セレクタ自体は再掲されるため、そちらを誤って拾わないよう
+  // print media query より前の本体だけを対象にする。
+  // グローバルの URL（jsdom環境ではブラウザ互換シムに差し替わっており、
+  // file: をbaseにした相対解決が http://localhost:3000/... に化けてしまう）
+  // ではなく、node:url の実装を明示的に使うこと。
+  const cssPath = new NodeURL("../styles/index.css", import.meta.url);
+  const css = readFileSync(cssPath, "utf-8");
+  const printMediaIndex = css.indexOf("@media print");
+  const baseCss = printMediaIndex === -1 ? css : css.slice(0, printMediaIndex);
+
+  function extractBlock(selector: string): string {
+    const escapedSelector = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const match = new RegExp(`${escapedSelector}\\s*\\{([^}]*)\\}`).exec(baseCss);
+    if (match === null) {
+      throw new Error(
+        `index.css にセレクタ ${selector} のブロックが見つかりません（CSSが変更された可能性があります）`,
+      );
+    }
+    return match[1];
+  }
+
+  function extractMm(block: string, selector: string, property: string): number {
+    const escapedProperty = property.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    // (?<![\w-]) で "line-height" が "height" に誤マッチしないようにする。
+    const match = new RegExp(`(?<![\\w-])${escapedProperty}\\s*:\\s*([\\d.]+)mm`).exec(
+      block,
+    );
+    if (match === null) {
+      throw new Error(
+        `index.css の ${selector} { ${property} } が見つかりません（CSSが変更された可能性があります）`,
+      );
+    }
+    return Number(match[1]);
+  }
+
+  it(".print-page の width が PAGE_WIDTH_MM と一致する", () => {
+    const block = extractBlock(".print-page");
+    expect(extractMm(block, ".print-page", "width")).toBe(PAGE_WIDTH_MM);
+  });
+
+  it(".print-page-title の height と margin-bottom が定数と一致する", () => {
+    const block = extractBlock(".print-page-title");
+    expect(extractMm(block, ".print-page-title", "height")).toBe(TITLE_HEIGHT_MM);
+    expect(extractMm(block, ".print-page-title", "margin-bottom")).toBe(
+      TITLE_MARGIN_MM,
+    );
+  });
+
+  it(".print-card-grid の grid-template-columns が COLUMNS と CARD_WIDTH_MM に一致する", () => {
+    const block = extractBlock(".print-card-grid");
+    const match = /grid-template-columns\s*:\s*repeat\(\s*(\d+)\s*,\s*([\d.]+)mm\s*\)/.exec(
+      block,
+    );
+    if (match === null) {
+      throw new Error(
+        "index.css の .print-card-grid { grid-template-columns } が見つかりません（CSSが変更された可能性があります）",
+      );
+    }
+    expect(Number(match[1])).toBe(COLUMNS);
+    expect(Number(match[2])).toBe(CARD_WIDTH_MM);
+  });
+
+  it(".print-card-grid の column-gap と row-gap が定数と一致する", () => {
+    const block = extractBlock(".print-card-grid");
+    expect(extractMm(block, ".print-card-grid", "column-gap")).toBe(COLUMN_GAP_MM);
+    expect(extractMm(block, ".print-card-grid", "row-gap")).toBe(ROW_GAP_MM);
+  });
+
+  it(".qr-card の width と height が定数と一致する", () => {
+    const block = extractBlock(".qr-card");
+    expect(extractMm(block, ".qr-card", "width")).toBe(CARD_WIDTH_MM);
+    expect(extractMm(block, ".qr-card", "height")).toBe(CARD_HEIGHT_MM);
   });
 });

@@ -51,7 +51,9 @@ body {
     横: カード3列165 + 列間2つ20 = 185mm ≤ 190mm（余裕5mm）
   プリンタごとの丸め誤差に耐えるよう余裕を残している。
   カード寸法・行数・列数を変えるときは、この式を必ず計算し直すこと。
-  （この値を変えたら src/components/PrintSheet.tsx の寸法定数も必ず合わせて直すこと）
+  （この値を変えたら src/components/PrintSheet.tsx の寸法定数も必ず合わせて直すこと。
+  片方だけ書き換えるとCSSと定数がずれるため、
+  src/screens/Print.test.tsx の「CSSと寸法定数の整合性」がこのファイルを直接読んで検知する）
 */
 .print-page {
   width: 190mm; /* A4の印字領域（210mm - 余白10mm × 2） */
