@@ -31,7 +31,7 @@ export function AppRoutes() {
       <Route path="/submissions" element={<SubmissionList />} />
       <Route path="/submissions/new" element={<SubmissionNew />} />
       <Route path="/submissions/:id/edit" element={<SubmissionEdit />} />
-      <Route path="*" element={<Navigate to="/roster" replace />} />
+      <Route path="*" element={<Navigate to="/scan" replace />} />
     </Routes>
   );
 }
