@@ -1,5 +1,5 @@
 import { useFreshDb } from "../test/db";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -35,7 +35,9 @@ describe("設定画面", () => {
     const user = userEvent.setup();
     renderAt("/settings");
 
-    await user.click(await screen.findByRole("checkbox", { name: "氏名を表示する" }));
+    const checkbox = await screen.findByRole("checkbox", { name: "氏名を表示する" });
+    await waitFor(() => expect(checkbox).toBeEnabled());
+    await user.click(checkbox);
 
     expect(await getSetting("showStudentNames")).toBe(true);
   });
@@ -58,7 +60,9 @@ describe("氏名の表示は名簿と印刷の両方に効く", () => {
     await addStudent({ cohortId, attendanceNumber: 1, name: "やまだ" });
 
     renderAt("/settings");
-    await user.click(await screen.findByRole("checkbox", { name: "氏名を表示する" }));
+    const rosterCheckbox = await screen.findByRole("checkbox", { name: "氏名を表示する" });
+    await waitFor(() => expect(rosterCheckbox).toBeEnabled());
+    await user.click(rosterCheckbox);
     await user.click(screen.getByRole("link", { name: "名簿に戻る" }));
 
     expect(await screen.findByText("やまだ")).toBeInTheDocument();
@@ -69,7 +73,9 @@ describe("氏名の表示は名簿と印刷の両方に効く", () => {
     await addStudent({ cohortId, attendanceNumber: 1, name: "やまだ" });
 
     renderAt("/settings");
-    await user.click(await screen.findByRole("checkbox", { name: "氏名を表示する" }));
+    const printCheckbox = await screen.findByRole("checkbox", { name: "氏名を表示する" });
+    await waitFor(() => expect(printCheckbox).toBeEnabled());
+    await user.click(printCheckbox);
     await user.click(screen.getByRole("link", { name: "名簿に戻る" }));
     await user.click(await screen.findByRole("link", { name: "QRを印刷" }));
 

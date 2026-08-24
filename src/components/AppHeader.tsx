@@ -16,10 +16,11 @@ export function AppHeader({
         </h1>
         <p className="mt-1 text-sm">{subtitle}</p>
       </div>
+      {/* タブレットを片手で持って押すため、44px四方のタップ領域を確保する */}
       <Link
         to="/settings"
         aria-label="設定"
-        className="text-ai shrink-0 p-2 text-xl"
+        className="text-ai flex size-11 shrink-0 items-center justify-center text-xl"
       >
         ⚙
       </Link>
