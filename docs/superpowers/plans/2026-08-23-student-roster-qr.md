@@ -3803,14 +3803,20 @@ function SettingsBody() {
         aria-labelledby で見出しだけを名前にし、説明は describedby にする。
       */}
       <div className="border-kogan mt-6 flex items-start gap-3 border-b pb-4">
+        {/*
+          読み込み中は操作させない。初回読み取りが飛んでいる最中に切り替えると、
+          あとから解決した読み取りが表示値を元に戻し、保存されていないように
+          見えてしまうため（DBへの書き込み自体は成功している）。
+        */}
         <input
           id="show-names"
           type="checkbox"
           checked={showNames.value}
+          disabled={showNames.loading}
           onChange={(event) => void showNames.update(event.target.checked)}
           aria-labelledby="show-names-label"
           aria-describedby="show-names-description"
-          className="mt-1 size-5"
+          className="mt-1 size-5 disabled:opacity-50"
         />
         <div>
           <label id="show-names-label" htmlFor="show-names" className="font-bold">
@@ -3861,10 +3867,11 @@ export function AppHeader({
         </h1>
         <p className="mt-1 text-sm">{subtitle}</p>
       </div>
+      {/* タブレットを片手で持って押すため、44px四方のタップ領域を確保する */}
       <Link
         to="/settings"
         aria-label="設定"
-        className="text-ai shrink-0 p-2 text-xl"
+        className="text-ai flex size-11 shrink-0 items-center justify-center text-xl"
       >
         ⚙
       </Link>
