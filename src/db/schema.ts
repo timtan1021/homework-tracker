@@ -24,6 +24,23 @@ export type Student = {
 
 export type Setting = { key: string; value: unknown };
 
+export type SubmissionStatus = "active" | "ended";
+
+export type SubmissionType = {
+  id: string;
+  cohortId: string;
+  /** 提出物名。先生が入力したそのままを保持する（比較時のみ正規化する）。 */
+  name: string;
+  /** "HH:mm" 24時間表記。例: "08:15"。Dateだと日付が付いて「毎日この時刻」を表せない。 */
+  deadline: string;
+  /** 0=日曜 〜 6=土曜。Date.getDay() と同じ番号。昇順・重複なしで保存する。 */
+  weekdays: number[];
+  status: SubmissionStatus;
+  /** 表示順。小さいほど上。 */
+  order: number;
+  createdAt: number;
+};
+
 export interface HomeworkDB extends DBSchema {
   cohorts: {
     key: string;
@@ -42,10 +59,15 @@ export interface HomeworkDB extends DBSchema {
     key: string;
     value: Setting;
   };
+  submissionTypes: {
+    key: string;
+    value: SubmissionType;
+    indexes: { "by-cohort": string };
+  };
 }
 
 export const DB_NAME = "homework-tracker";
-export const DB_VERSION = 1;
+export const DB_VERSION = 2;
 
 let dbPromise: Promise<IDBPDatabase<HomeworkDB>> | null = null;
 
@@ -56,17 +78,30 @@ export function getDb(): Promise<IDBPDatabase<HomeworkDB>> {
     }
 
     dbPromise = openDB<HomeworkDB>(DB_NAME, DB_VERSION, {
-      upgrade(db) {
-        const cohorts = db.createObjectStore("cohorts", { keyPath: "id" });
-        cohorts.createIndex("by-year", "year");
+      upgrade(db, oldVersion) {
+        // oldVersion で分岐する。まとめて作ると、既にストアがある端末で
+        // createObjectStore が例外を投げ、名簿ごと開けなくなる。
+        if (oldVersion < 1) {
+          const cohorts = db.createObjectStore("cohorts", { keyPath: "id" });
+          cohorts.createIndex("by-year", "year");
 
-        const students = db.createObjectStore("students", { keyPath: "id" });
-        students.createIndex("by-cohort", "cohortId");
-        students.createIndex("by-cohort-number", ["cohortId", "attendanceNumber"], {
-          unique: true,
-        });
+          const students = db.createObjectStore("students", { keyPath: "id" });
+          students.createIndex("by-cohort", "cohortId");
+          students.createIndex(
+            "by-cohort-number",
+            ["cohortId", "attendanceNumber"],
+            { unique: true },
+          );
 
-        db.createObjectStore("settings", { keyPath: "key" });
+          db.createObjectStore("settings", { keyPath: "key" });
+        }
+
+        if (oldVersion < 2) {
+          const submissionTypes = db.createObjectStore("submissionTypes", {
+            keyPath: "id",
+          });
+          submissionTypes.createIndex("by-cohort", "cohortId");
+        }
       },
     }).catch((): never => {
       // 次の呼び出しで開き直せるようにする
