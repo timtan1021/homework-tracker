@@ -40,3 +40,50 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* --- QRカードの印刷 --- */
+
+.print-page {
+  width: 190mm; /* A4の印字領域（210mm - 余白10mm × 2） */
+}
+
+.print-card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 55mm);
+  column-gap: 12.5mm;
+  row-gap: 12.3mm;
+}
+
+.qr-card {
+  width: 55mm;
+  height: 60mm;
+  border: 0.2mm dashed var(--color-kogan); /* 裁ち線 */
+}
+
+.qr-card svg {
+  width: 38mm;
+  height: 38mm;
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-page {
+    break-after: page;
+  }
+
+  .print-page:last-child {
+    break-after: auto;
+  }
+
+  .qr-card {
+    break-inside: avoid;
+  }
+}

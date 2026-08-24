@@ -1,4 +1,5 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router";
+import { Print } from "./screens/Print";
 import { Roster } from "./screens/Roster";
 import { Setup } from "./screens/Setup";
 import { StudentEdit } from "./screens/StudentEdit";
@@ -11,6 +12,7 @@ export function AppRoutes() {
       <Route path="/roster" element={<Roster />} />
       <Route path="/roster/new" element={<StudentNew />} />
       <Route path="/roster/:id/edit" element={<StudentEdit />} />
+      <Route path="/print" element={<Print />} />
       <Route path="*" element={<Navigate to="/roster" replace />} />
     </Routes>
   );
