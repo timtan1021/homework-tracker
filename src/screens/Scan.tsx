@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
+import { CameraView } from "../components/CameraView";
 import { CohortGate, useActiveCohort } from "../components/CohortGate";
 import { FullScreenMessage } from "../components/FullScreenMessage";
 import { NumberPad } from "../components/NumberPad";
@@ -8,8 +9,10 @@ import { SubmissionToggleBar } from "../components/SubmissionToggleBar";
 import { recordSubmission, type RecordResult } from "../db/submissions";
 import { useStudents } from "../hooks/useStudents";
 import { useSubmissions } from "../hooks/useSubmissions";
+import { useQrCamera } from "../hooks/useQrCamera";
 import { useSubmissionTypes } from "../hooks/useSubmissionTypes";
 import { formatDateHeading, toDateKey } from "../lib/date";
+import { parseQrPayload } from "../lib/qr";
 
 function ScanBody() {
   const cohort = useActiveCohort();
@@ -25,6 +28,23 @@ function ScanBody() {
 
   const [selectedIds, setSelectedIds] = useState<string[] | null>(null);
   const [result, setResult] = useState<RecordResult | null>(null);
+  const [mode, setMode] = useState<"camera" | "number">("camera");
+
+  // handleScan は selected を参照するが、それが決まるのは早期returnの後。
+  // フックは早期returnより前に置く必要があるため、refで後から差し込む。
+  const scanHandlerRef = useRef<(payload: string) => void>(() => {});
+  const camera = useQrCamera({
+    enabled: mode === "camera",
+    onScan: (payload) => scanHandlerRef.current(payload),
+  });
+
+  // カメラが使えないと分かったら番号モードへ落とす。
+  // 黙って何も映らないと、先生は端末の故障と考える。
+  useEffect(() => {
+    if (camera.state === "unavailable" || camera.state === "denied") {
+      setMode("number");
+    }
+  }, [camera.state]);
 
   // 提出記録の再読み込みでは全画面の読み込み表示に戻さない。
   // 記録するたびに画面が差し替わると、出したばかりの花丸と結果が
@@ -94,6 +114,22 @@ function ScanBody() {
     });
   }
 
+  function handleScan(payload: string): void {
+    if (selected.length === 0) {
+      return;
+    }
+
+    const studentId = parseQrPayload(payload);
+    if (studentId === null) {
+      // このアプリのQRでなければ黙って無視する。教室で商品バーコードが
+      // カメラに入っても先生の手を止めない。
+      return;
+    }
+    pick(studentId);
+  }
+
+  scanHandlerRef.current = handleScan;
+
   return (
     <main className="mx-auto flex min-h-dvh max-w-3xl flex-col gap-4 p-4">
       <header className="border-kogan flex items-center justify-between gap-3 border-b pb-3">
@@ -127,7 +163,14 @@ function ScanBody() {
 
           <ScanResult result={result} />
 
-          {selected.length === 0 ? (
+          {mode === "camera" ? (
+            <CameraView
+              state={camera.state}
+              message={camera.message}
+              videoRef={camera.videoRef}
+              canvasRef={camera.canvasRef}
+            />
+          ) : selected.length === 0 ? (
             <p className="py-8 text-center font-bold">
               チェックする提出物を選んでください
             </p>
@@ -138,6 +181,14 @@ function ScanBody() {
               onPick={pick}
             />
           )}
+
+          <button
+            type="button"
+            onClick={() => setMode(mode === "camera" ? "number" : "camera")}
+            className="border-ai text-ai min-h-11 rounded border-2 px-4 py-2 font-bold"
+          >
+            {mode === "camera" ? "番号でチェック" : "カメラでスキャン"}
+          </button>
 
           <p className="mt-auto pt-4 text-sm">
             {todayTypes
