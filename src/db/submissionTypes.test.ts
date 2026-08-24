@@ -210,6 +210,36 @@ describe("updateSubmissionType", () => {
     expect(updated.deadline).toBe("08:30");
   });
 
+  it("終了した提出物と名前が重なれば理由を示して拒否する", async () => {
+    const ended = await drill({ name: "日記" });
+    await endSubmissionType(ended.id);
+    const active = await drill({ name: "計算ドリル" });
+
+    await expect(
+      updateSubmissionType(active.id, {
+        name: "日記",
+        deadline: "08:15",
+        weekdays: WEEKDAYS,
+      }),
+    ).rejects.toThrow(
+      new ValidationError("日記は終了した提出物として登録されています"),
+    );
+  });
+
+  it("終了した自分自身の名前のままなら通す", async () => {
+    // 終了したものを編集する経路。自己衝突と判定してはいけない。
+    const type = await drill();
+    await endSubmissionType(type.id);
+
+    const updated = await updateSubmissionType(type.id, {
+      name: "計算ドリル",
+      deadline: "08:30",
+      weekdays: WEEKDAYS,
+    });
+
+    expect(updated.deadline).toBe("08:30");
+  });
+
   it("他の提出物と名前が重なれば拒否する", async () => {
     await drill({ name: "計算ドリル" });
     const second = await drill({ name: "音読カード" });
