@@ -2636,12 +2636,8 @@ export function ConfirmDialog({
         return;
       }
       event.preventDefault();
-      const next =
-        document.activeElement === cancel
-          ? event.shiftKey
-            ? confirm
-            : confirm
-          : cancel;
+      // ボタンは2つなので Tab も Shift+Tab も「もう一方」へ移る
+      const next = document.activeElement === cancel ? confirm : cancel;
       next.focus();
     }
 
