@@ -55,6 +55,7 @@ function StudentNewBody() {
 
       <div className="mt-6">
         <StudentForm
+          key={suggested.data}
           defaultNumber={suggested.data}
           defaultName=""
           showName={showNames.value}
