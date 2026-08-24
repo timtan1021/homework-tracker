@@ -41,6 +41,17 @@ export type SubmissionType = {
   createdAt: number;
 };
 
+export type Submission = {
+  id: string;
+  cohortId: string;
+  studentId: string;
+  submissionTypeId: string;
+  /** "YYYY-MM-DD" ローカル日付。Dateだとタイムゾーンや時分で同日判定が壊れる。 */
+  date: string;
+  /** epoch ms。最初に提出した時刻。二度目のスキャンで上書きしない。 */
+  submittedAt: number;
+};
+
 export interface HomeworkDB extends DBSchema {
   cohorts: {
     key: string;
@@ -64,10 +75,18 @@ export interface HomeworkDB extends DBSchema {
     value: SubmissionType;
     indexes: { "by-cohort": string };
   };
+  submissions: {
+    key: string;
+    value: Submission;
+    indexes: {
+      "by-cohort-date": [string, string];
+      "by-unique": [string, string, string];
+    };
+  };
 }
 
 export const DB_NAME = "homework-tracker";
-export const DB_VERSION = 2;
+export const DB_VERSION = 3;
 
 let dbPromise: Promise<IDBPDatabase<HomeworkDB>> | null = null;
 
@@ -101,6 +120,20 @@ export function getDb(): Promise<IDBPDatabase<HomeworkDB>> {
             keyPath: "id",
           });
           submissionTypes.createIndex("by-cohort", "cohortId");
+        }
+
+        if (oldVersion < 3) {
+          const submissions = db.createObjectStore("submissions", {
+            keyPath: "id",
+          });
+          submissions.createIndex("by-cohort-date", ["cohortId", "date"]);
+          // 二重記録の最後の砦。アプリのロジックだけに任せると
+          // カメラの連写や二重タップで抜ける。
+          submissions.createIndex(
+            "by-unique",
+            ["date", "studentId", "submissionTypeId"],
+            { unique: true },
+          );
         }
       },
     }).catch((): never => {

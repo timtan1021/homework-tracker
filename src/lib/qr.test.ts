@@ -2,7 +2,12 @@ import { describe, expect, it } from "vitest";
 import { createCohort } from "../db/cohorts";
 import { addStudent, updateStudent } from "../db/students";
 import { useFreshDb } from "../test/db";
-import { buildQrPayload, renderQrSvg, QR_PAYLOAD_PREFIX } from "./qr";
+import {
+  buildQrPayload,
+  parseQrPayload,
+  renderQrSvg,
+  QR_PAYLOAD_PREFIX,
+} from "./qr";
 
 const STUDENT_ID = "9f2c1a84-4d3e-4c1b-8f77-2b6c9a0e51d3";
 
@@ -80,5 +85,30 @@ describe("renderQrSvg", () => {
     // 誤り訂正レベルをMに下げたり余白を削ったりするとカードが読めなくなる。
     const svg = await renderQrSvg(buildQrPayload(STUDENT_ID));
     expect(svg).toContain('viewBox="0 0 41 41"');
+  });
+});
+
+describe("parseQrPayload", () => {
+  it("接頭辞を外して内部IDを返す", () => {
+    expect(parseQrPayload(`hw1:${STUDENT_ID}`)).toBe(STUDENT_ID);
+  });
+
+  it("buildQrPayload の出力を元に戻せる", () => {
+    expect(parseQrPayload(buildQrPayload(STUDENT_ID))).toBe(STUDENT_ID);
+  });
+
+  it("接頭辞が無ければ null を返す", () => {
+    // 商品バーコードや他アプリのQRを黙って弾くための接頭辞
+    expect(parseQrPayload(STUDENT_ID)).toBeNull();
+    expect(parseQrPayload("4901234567894")).toBeNull();
+    expect(parseQrPayload("https://example.com")).toBeNull();
+  });
+
+  it("接頭辞だけで中身が無ければ null を返す", () => {
+    expect(parseQrPayload("hw1:")).toBeNull();
+  });
+
+  it("空文字なら null を返す", () => {
+    expect(parseQrPayload("")).toBeNull();
   });
 });

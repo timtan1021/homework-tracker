@@ -106,8 +106,8 @@ describe("バージョン1からバージョン2への移行", () => {
   });
 });
 
-describe("まっさらな端末でのバージョン2", () => {
-  it("4つのストアがすべて作られる", async () => {
+describe("まっさらな端末", () => {
+  it("バージョン2までのストアがすべて作られる", async () => {
     const db = await getDb();
 
     expect(db.objectStoreNames.contains("cohorts")).toBe(true);
@@ -116,10 +116,13 @@ describe("まっさらな端末でのバージョン2", () => {
     expect(db.objectStoreNames.contains("submissionTypes")).toBe(true);
   });
 
-  it("バージョンが2である", async () => {
-    expect(DB_VERSION).toBe(2);
+  it("バージョン2以上で開かれる", async () => {
+    // 具体的な番号を書かない。バージョンを上げるたびにこのテストが
+    // 壊れるのは、このテストが守りたいこと（v2のストアが揃うこと）
+    // ではない。最新版の検証は各バージョンの移行テストが持つ。
+    expect(DB_VERSION).toBeGreaterThanOrEqual(2);
 
     const db = await getDb();
-    expect(db.version).toBe(2);
+    expect(db.version).toBeGreaterThanOrEqual(2);
   });
 });

@@ -8,6 +8,21 @@ export function buildQrPayload(studentId: string): string {
   return `${QR_PAYLOAD_PREFIX}${studentId}`;
 }
 
+/**
+ * QRから読んだ文字列を内部IDに戻す。このアプリのQRでなければ null。
+ *
+ * 接頭辞で弾くのは、教室で商品バーコードや他アプリのQRが
+ * カメラに入っても黙って無視するため。
+ */
+export function parseQrPayload(payload: string): string | null {
+  if (!payload.startsWith(QR_PAYLOAD_PREFIX)) {
+    return null;
+  }
+
+  const studentId = payload.slice(QR_PAYLOAD_PREFIX.length);
+  return studentId === "" ? null : studentId;
+}
+
 export function renderQrSvg(payload: string): Promise<string> {
   return QRCode.toString(payload, {
     type: "svg",
