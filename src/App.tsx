@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router";
 import { SetupGate } from "./components/SetupGate";
 import { Print } from "./screens/Print";
 import { Roster } from "./screens/Roster";
+import { UpdateBanner } from "./components/UpdateBanner";
 import { Scan } from "./screens/Scan";
 import { Settings } from "./screens/Settings";
 import { SubmissionEdit } from "./screens/SubmissionEdit";
@@ -40,6 +41,7 @@ export function App() {
   return (
     <BrowserRouter>
       <AppRoutes />
+      <UpdateBanner />
     </BrowserRouter>
   );
 }
