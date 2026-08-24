@@ -157,3 +157,43 @@ describe("完全に削除", () => {
     expect(await getStudent(student.id)).not.toBeNull();
   });
 });
+
+describe("完全に削除ダイアログのフォーカス管理", () => {
+  it("開いた直後は「やめる」にフォーカスが当たる", async () => {
+    const user = userEvent.setup();
+    const student = await addStudent({ cohortId, attendanceNumber: 12 });
+    renderEdit(student.id);
+
+    await user.click(await screen.findByRole("button", { name: "完全に削除" }));
+    const dialog = await screen.findByRole("alertdialog");
+
+    expect(within(dialog).getByRole("button", { name: "やめる" })).toHaveFocus();
+  });
+
+  it("Tabを押すと「削除する」に移る", async () => {
+    const user = userEvent.setup();
+    const student = await addStudent({ cohortId, attendanceNumber: 12 });
+    renderEdit(student.id);
+
+    await user.click(await screen.findByRole("button", { name: "完全に削除" }));
+    const dialog = await screen.findByRole("alertdialog");
+
+    await user.tab();
+
+    expect(within(dialog).getByRole("button", { name: "削除する" })).toHaveFocus();
+  });
+
+  it("もう一度Tabを押すと「やめる」に戻る(背面に抜けない)", async () => {
+    const user = userEvent.setup();
+    const student = await addStudent({ cohortId, attendanceNumber: 12 });
+    renderEdit(student.id);
+
+    await user.click(await screen.findByRole("button", { name: "完全に削除" }));
+    const dialog = await screen.findByRole("alertdialog");
+
+    await user.tab();
+    await user.tab();
+
+    expect(within(dialog).getByRole("button", { name: "やめる" })).toHaveFocus();
+  });
+});

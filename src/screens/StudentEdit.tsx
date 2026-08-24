@@ -74,6 +74,7 @@ function StudentEditBody({ studentId }: { studentId: string }) {
 
       <div className="mt-6">
         <StudentForm
+          key={student.id}
           defaultNumber={student.attendanceNumber}
           defaultName={student.name}
           showName={showNames.value}
