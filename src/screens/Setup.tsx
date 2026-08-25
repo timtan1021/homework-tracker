@@ -2,6 +2,8 @@ import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router";
 import { createCohort } from "../db/cohorts";
 import { currentSchoolYear } from "../lib/schoolYear";
+import { parseBackup, restoreBackup } from "../backup/import";
+import { InvalidBackupError } from "../backup/types";
 
 export function Setup() {
   const navigate = useNavigate();
@@ -9,6 +11,9 @@ export function Setup() {
   const [className, setClassName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  const [restoreError, setRestoreError] = useState<string | null>(null);
+  const [restoring, setRestoring] = useState(false);
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -32,6 +37,27 @@ export function Setup() {
           : "クラスを作れませんでした。もう一度お試しください",
       );
       setSaving(false);
+    }
+  }
+
+  async function handleRestoreFile(file: File) {
+    setRestoreError(null);
+    setRestoring(true);
+
+    const text = await file.text();
+    try {
+      const backup = parseBackup(text);
+      // /setup に到達できるのは有効なcohortが無いときだけ（SetupGateによる）
+      // なので、消えるデータが無い。確認ダイアログを挟まず即座に復元する。
+      await restoreBackup(backup);
+      navigate("/roster", { replace: true });
+    } catch (cause: unknown) {
+      setRestoreError(
+        cause instanceof InvalidBackupError
+          ? cause.message
+          : "このファイルは読み込めませんでした。バックアップファイルを選び直してください",
+      );
+      setRestoring(false);
     }
   }
 
@@ -78,6 +104,35 @@ export function Setup() {
           クラスをつくる
         </button>
       </form>
+
+      <div className="border-kogan mt-8 border-t pt-6">
+        <p className="text-sm">
+          機種変更などで前のデータを引き継ぐ場合は、バックアップファイルを選んでください。
+        </p>
+        <label className="mt-3 block">
+          <span className="sr-only">復元するファイル</span>
+          <input
+            type="file"
+            accept="application/json"
+            aria-label="復元するファイル"
+            disabled={restoring}
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file !== undefined) {
+                void handleRestoreFile(file);
+              }
+              event.target.value = "";
+            }}
+            className="text-sm disabled:opacity-50"
+          />
+        </label>
+
+        {restoreError !== null && (
+          <p role="alert" className="mt-2 text-sm font-bold">
+            {restoreError}
+          </p>
+        )}
+      </div>
     </main>
   );
 }

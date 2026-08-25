@@ -1,10 +1,11 @@
 import { useFreshDb } from "../test/db";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
 import { AppRoutes } from "../App";
 import { getActiveCohort } from "../db/cohorts";
+import type { BackupFile } from "../backup/types";
 
 useFreshDb();
 
@@ -66,5 +67,70 @@ describe("初回セットアップ", () => {
     const cohort = await getActiveCohort();
     expect(cohort?.className).toBe("5年1組");
     expect(cohort?.year).toBe(2026);
+  });
+});
+
+describe("バックアップからの復元", () => {
+  it("ファイルを選ぶと確認無しで復元される", async () => {
+    const user = userEvent.setup();
+
+    // /setup に到達できるのは有効なcohortが無いときだけ（SetupGateによる）。
+    // buildBackup はDBから組み立てる純粋関数でルーティングを経由しないため、
+    // BackupFile 形式のオブジェクトをここで直接組み立てる。
+    const backup: BackupFile = {
+      formatVersion: 1,
+      exportedAt: new Date().toISOString(),
+      cohort: {
+        id: "cohort-from-backup",
+        year: 2026,
+        className: "5年1組",
+        isActive: true,
+        createdAt: Date.now(),
+      },
+      students: [
+        {
+          id: "student-from-backup",
+          cohortId: "cohort-from-backup",
+          attendanceNumber: 3,
+          name: "",
+          status: "active",
+          createdAt: Date.now(),
+        },
+      ],
+      submissionTypes: [],
+      submissions: [],
+    };
+
+    renderAt("/setup");
+
+    const input = await screen.findByLabelText("復元するファイル");
+    const file = new File([JSON.stringify(backup)], "backup.json", {
+      type: "application/json",
+    });
+    await user.upload(input, file);
+
+    // 確認ダイアログを経ずに、そのまま名簿へ遷移する
+    expect(await screen.findByText("在籍1人・欠番0")).toBeInTheDocument();
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+  });
+
+  it("壊れたファイルを選ぶとエラーを出す", async () => {
+    const user = userEvent.setup();
+    renderAt("/setup");
+
+    const input = await screen.findByLabelText("復元するファイル");
+    const file = new File(["{ 壊れたJSON"], "backup.json", {
+      type: "application/json",
+    });
+    await user.upload(input, file);
+
+    expect(
+      await screen.findByText(
+        "このファイルは読み込めませんでした。バックアップファイルを選び直してください",
+      ),
+    ).toBeInTheDocument();
+
+    // エラー後もファイル選択が固まらず、別のファイルを選び直せること
+    await waitFor(() => expect(input).toBeEnabled());
   });
 });
