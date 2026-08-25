@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { CohortGate, useActiveCohort } from "../components/CohortGate";
+import { FullScreenMessage } from "../components/FullScreenMessage";
 import { backupFileName, buildBackup } from "../backup/export";
 import { parseBackup, restoreBackup } from "../backup/import";
 import { InvalidBackupError, type BackupFile } from "../backup/types";
@@ -53,12 +54,25 @@ function SettingsBody() {
       return;
     }
     setRestoring(true);
-    await restoreBackup(pendingRestore);
+    try {
+      await restoreBackup(pendingRestore);
+    } catch {
+      setPendingRestore(null);
+      setRestoring(false);
+      setRestoreError("復元できませんでした。もう一度お試しください");
+      return;
+    }
     // 復元で cohort そのものが別のIDに入れ替わる。useActiveCohort が
     // 参照する値をはじめ、アプリ内の状態をすべて作り直すより、ページを
     // 丸ごと作り直すほうが単純で確実。復元は頻繁に起きる操作ではないため
     // この単純さを優先する。
     location.reload();
+  }
+
+  // 復元中はダイアログの「やめる」を押しても処理そのものは止まらない。
+  // 押せる状態のまま見せると、取り消せたかのように誤解させる。
+  if (restoring) {
+    return <FullScreenMessage>復元しています</FullScreenMessage>;
   }
 
   return (
