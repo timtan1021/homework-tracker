@@ -16,6 +16,19 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /**
+ * 各ストアのkeyPathは "id"。値がidを持たないと put() がその場で
+ * 同期的に例外を投げる。復元処理は複数の put を1つのループで並べて
+ * 呼ぶため、途中の項目で投げると「古いデータの削除だけ済んで新しい
+ * データは一部しか書き戻らない」状態になる。書き込みの前に必ず
+ * 全項目のidを検証し、そういう状態を作らせない。
+ */
+function hasId(value: unknown): value is { id: string } {
+  return (
+    isRecord(value) && typeof value.id === "string" && value.id !== ""
+  );
+}
+
+/**
  * 生のテキストを BackupFile として検証する。
  *
  * 先生に内部構造の違いを説明しても意味がないため、形が不正な場合は
@@ -36,16 +49,19 @@ export function parseBackup(raw: string): BackupFile {
   if (data.formatVersion !== BACKUP_FORMAT_VERSION) {
     throw new InvalidBackupError(UNSUPPORTED_MESSAGE);
   }
-  if (!isRecord(data.cohort)) {
+  if (!hasId(data.cohort)) {
     throw new InvalidBackupError(UNSUPPORTED_MESSAGE);
   }
-  if (!Array.isArray(data.students)) {
+  if (!Array.isArray(data.students) || !data.students.every(hasId)) {
     throw new InvalidBackupError(UNSUPPORTED_MESSAGE);
   }
-  if (!Array.isArray(data.submissionTypes)) {
+  if (
+    !Array.isArray(data.submissionTypes) ||
+    !data.submissionTypes.every(hasId)
+  ) {
     throw new InvalidBackupError(UNSUPPORTED_MESSAGE);
   }
-  if (!Array.isArray(data.submissions)) {
+  if (!Array.isArray(data.submissions) || !data.submissions.every(hasId)) {
     throw new InvalidBackupError(UNSUPPORTED_MESSAGE);
   }
 

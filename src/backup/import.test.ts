@@ -74,6 +74,98 @@ describe("parseBackup", () => {
       ),
     ).toThrow(InvalidBackupError);
   });
+
+  function validBackupWithout(
+    field: "cohort.id" | "students.id" | "submissionTypes.id" | "submissions.id",
+  ): unknown {
+    const backup = {
+      formatVersion: 1,
+      exportedAt: new Date().toISOString(),
+      cohort: {
+        id: "cohort-x",
+        year: 2026,
+        className: "5年1組",
+        isActive: true,
+        createdAt: 1,
+      },
+      students: [
+        {
+          id: "student-x",
+          cohortId: "cohort-x",
+          attendanceNumber: 1,
+          name: "",
+          status: "active",
+          createdAt: 1,
+        },
+      ],
+      submissionTypes: [
+        {
+          id: "type-x",
+          cohortId: "cohort-x",
+          name: "計算ドリル",
+          deadline: "08:15",
+          weekdays: [1],
+          status: "active",
+          order: 1,
+          createdAt: 1,
+        },
+      ],
+      submissions: [
+        {
+          id: "submission-x",
+          cohortId: "cohort-x",
+          studentId: "student-x",
+          submissionTypeId: "type-x",
+          date: "2026-08-24",
+          submittedAt: 1,
+        },
+      ],
+    };
+
+    if (field === "cohort.id") {
+      const { id: _id, ...rest } = backup.cohort;
+      return { ...backup, cohort: rest };
+    }
+    if (field === "students.id") {
+      const { id: _id, ...rest } = backup.students[0];
+      return { ...backup, students: [rest] };
+    }
+    if (field === "submissionTypes.id") {
+      const { id: _id, ...rest } = backup.submissionTypes[0];
+      return { ...backup, submissionTypes: [rest] };
+    }
+    const { id: _id, ...rest } = backup.submissions[0];
+    return { ...backup, submissions: [rest] };
+  }
+
+  // IndexedDBのobject storeはkeyPath "id" が無い値をputすると同期的に
+  // 例外を投げる。restoreBackup の途中でこれが起きると、既存データの
+  // 削除だけが済んで新データの一部しか書き戻らない状態になる。
+  // parseBackupの時点で全項目にidがあることを保証し、restoreBackupへは
+  // 検証済みの形しか渡らないようにする。
+  it("cohortにidが無ければ拒否する", () => {
+    expect(() =>
+      parseBackup(JSON.stringify(validBackupWithout("cohort.id"))),
+    ).toThrow(InvalidBackupError);
+  });
+
+  it("studentsの項目にidが無ければ拒否する", () => {
+    expect(() =>
+      parseBackup(JSON.stringify(validBackupWithout("students.id"))),
+    ).toThrow(InvalidBackupError);
+  });
+
+  it("submissionTypesの項目にidが無ければ拒否する", () => {
+    expect(() =>
+      parseBackup(JSON.stringify(validBackupWithout("submissionTypes.id"))),
+    ).toThrow(InvalidBackupError);
+  });
+
+  it("submissionsの項目にidが無ければ拒否する", () => {
+    expect(() =>
+      parseBackup(JSON.stringify(validBackupWithout("submissions.id"))),
+    ).toThrow(InvalidBackupError);
+  });
 });
 
 describe("restoreBackup", () => {
