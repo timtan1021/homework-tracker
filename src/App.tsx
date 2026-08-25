@@ -11,6 +11,7 @@ import { SubmissionNew } from "./screens/SubmissionNew";
 import { Setup } from "./screens/Setup";
 import { StudentEdit } from "./screens/StudentEdit";
 import { StudentNew } from "./screens/StudentNew";
+import { Unsubmitted } from "./screens/Unsubmitted";
 
 export function AppRoutes() {
   return (
@@ -32,6 +33,7 @@ export function AppRoutes() {
       <Route path="/submissions" element={<SubmissionList />} />
       <Route path="/submissions/new" element={<SubmissionNew />} />
       <Route path="/submissions/:id/edit" element={<SubmissionEdit />} />
+      <Route path="/unsubmitted" element={<Unsubmitted />} />
       <Route path="*" element={<Navigate to="/scan" replace />} />
     </Routes>
   );

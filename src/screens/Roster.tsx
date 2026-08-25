@@ -82,6 +82,12 @@ function RosterBody() {
             提出物の設定
           </Link>
         </div>
+        <Link
+          to="/unsubmitted"
+          className="border-ai text-ai rounded border-2 px-4 py-3 text-center font-bold"
+        >
+          未提出者・集計を見る
+        </Link>
       </nav>
     </main>
   );

@@ -160,4 +160,12 @@ describe("下部のボタン", () => {
       "/print",
     );
   });
+
+  it("未提出者・集計への導線がある", async () => {
+    renderRoster();
+
+    expect(
+      await screen.findByRole("link", { name: "未提出者・集計を見る" }),
+    ).toHaveAttribute("href", "/unsubmitted");
+  });
 });
