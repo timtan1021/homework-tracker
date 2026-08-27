@@ -1,12 +1,13 @@
 import { useFreshDb } from "../test/db";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it } from "vitest";
 import { AppRoutes } from "../App";
 import { createCohort } from "../db/cohorts";
 import { addStudent, transferOutStudent } from "../db/students";
 import { addSubmissionType } from "../db/submissionTypes";
-import { recordSubmission } from "../db/submissions";
+import { markAbsent, recordSubmission } from "../db/submissions";
 import { toDateKey } from "../lib/date";
 
 useFreshDb();
@@ -138,5 +139,96 @@ describe("未提出者・集計画面", () => {
 
     expect(await screen.findByText("4番")).toBeInTheDocument();
     expect(screen.getByText("1回")).toBeInTheDocument();
+  });
+
+  it("未提出のセルをタップして欠席にできる", async () => {
+    const user = userEvent.setup();
+    await addSubmissionType({
+      cohortId,
+      name: "計算ドリル",
+      deadline: "23:59",
+      weekdays: [todayWeekday],
+    });
+    await addStudent({ cohortId, attendanceNumber: 5 });
+
+    renderAt("/unsubmitted");
+
+    await user.click(await screen.findByRole("button", { name: "5番" }));
+    await user.click(
+      await screen.findByRole("button", { name: "欠席にする" }),
+    );
+
+    const cell = await screen.findByRole("button", { name: "5番（欠席）" });
+    expect(cell).toHaveAttribute("data-status", "absent");
+  });
+
+  it("欠席のセルをタップして取り消せる", async () => {
+    const user = userEvent.setup();
+    const type = await addSubmissionType({
+      cohortId,
+      name: "計算ドリル",
+      deadline: "23:59",
+      weekdays: [todayWeekday],
+    });
+    const student = await addStudent({ cohortId, attendanceNumber: 5 });
+    await markAbsent({
+      cohortId,
+      studentId: student.id,
+      submissionTypeId: type.id,
+      date: todayKey,
+    });
+
+    renderAt("/unsubmitted");
+
+    await user.click(
+      await screen.findByRole("button", { name: "5番（欠席）" }),
+    );
+    await user.click(await screen.findByRole("button", { name: "取り消す" }));
+
+    const cell = await screen.findByRole("button", { name: "5番" });
+    expect(cell).toHaveAttribute("data-status", "unmarked");
+  });
+
+  it("やめるを押すと何も変わらない", async () => {
+    const user = userEvent.setup();
+    await addSubmissionType({
+      cohortId,
+      name: "計算ドリル",
+      deadline: "23:59",
+      weekdays: [todayWeekday],
+    });
+    await addStudent({ cohortId, attendanceNumber: 5 });
+
+    renderAt("/unsubmitted");
+
+    await user.click(await screen.findByRole("button", { name: "5番" }));
+    await user.click(await screen.findByRole("button", { name: "やめる" }));
+
+    const cell = await screen.findByRole("button", { name: "5番" });
+    expect(cell).toHaveAttribute("data-status", "unmarked");
+  });
+
+  it("欠席にすると直近2週間の集計から除外される", async () => {
+    const user = userEvent.setup();
+    await addSubmissionType({
+      cohortId,
+      name: "計算ドリル",
+      deadline: "00:00",
+      weekdays: [todayWeekday],
+    });
+    await addStudent({ cohortId, attendanceNumber: 4 });
+
+    renderAt("/unsubmitted");
+
+    expect(await screen.findByText("4番")).toBeInTheDocument();
+    expect(screen.getByText("1回")).toBeInTheDocument();
+
+    await user.click(await screen.findByRole("button", { name: "4番" }));
+    await user.click(
+      await screen.findByRole("button", { name: "欠席にする" }),
+    );
+
+    await screen.findByText("未提出はありません");
+    expect(screen.queryByText("4番")).toBeNull();
   });
 });
