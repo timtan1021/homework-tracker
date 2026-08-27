@@ -35,6 +35,7 @@ function UnsubmittedBody() {
   const counts = useRecentNonSubmissionCounts(cohort.id, date, now);
 
   const [pending, setPending] = useState<Pending | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   if (groups.status === "loading" || counts.status === "loading") {
     return <FullScreenMessage>読み込んでいます</FullScreenMessage>;
@@ -69,7 +70,16 @@ function UnsubmittedBody() {
             date,
           });
     setPending(null);
-    void action.then(reload);
+    setError(null);
+    void action
+      .then(reload)
+      .catch((cause: unknown) => {
+        setError(
+          cause instanceof Error
+            ? cause.message
+            : "保存できませんでした。もう一度お試しください",
+        );
+      });
   }
 
   return (
@@ -82,6 +92,12 @@ function UnsubmittedBody() {
           名簿へ
         </Link>
       </header>
+
+      {error !== null && (
+        <p role="alert" className="text-sm font-bold">
+          {error}
+        </p>
+      )}
 
       <section className="flex flex-col gap-5">
         <h2 className="font-display text-ai text-xl">今日の未提出</h2>

@@ -2,13 +2,14 @@ import { useFreshDb } from "../test/db";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppRoutes } from "../App";
 import { createCohort } from "../db/cohorts";
 import { addStudent, transferOutStudent } from "../db/students";
 import { addSubmissionType } from "../db/submissionTypes";
 import { markAbsent, recordSubmission } from "../db/submissions";
 import { toDateKey } from "../lib/date";
+import * as submissionsModule from "../db/submissions";
 
 useFreshDb();
 
@@ -230,5 +231,36 @@ describe("未提出者・集計画面", () => {
 
     await screen.findByText("未提出はありません");
     expect(screen.queryByText("4番")).toBeNull();
+  });
+
+  it("欠席にする際に保存に失敗したらエラーを表示し、セルの状態は変わらない", async () => {
+    const user = userEvent.setup();
+    await addSubmissionType({
+      cohortId,
+      name: "計算ドリル",
+      deadline: "23:59",
+      weekdays: [todayWeekday],
+    });
+    await addStudent({ cohortId, attendanceNumber: 6 });
+
+    const spy = vi
+      .spyOn(submissionsModule, "markAbsent")
+      .mockRejectedValueOnce(new Error("ストレージにアクセスできません"));
+
+    renderAt("/unsubmitted");
+
+    await user.click(await screen.findByRole("button", { name: "6番" }));
+    await user.click(
+      await screen.findByRole("button", { name: "欠席にする" }),
+    );
+
+    expect(
+      await screen.findByText("ストレージにアクセスできません"),
+    ).toBeInTheDocument();
+
+    const cell = screen.getByRole("button", { name: "6番" });
+    expect(cell).toHaveAttribute("data-status", "unmarked");
+
+    spy.mockRestore();
   });
 });
