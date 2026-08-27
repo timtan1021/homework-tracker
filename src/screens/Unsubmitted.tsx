@@ -47,6 +47,10 @@ function UnsubmittedBody() {
     return <FullScreenMessage tone="error">{counts.message}</FullScreenMessage>;
   }
 
+  // 確定のたびに全画面の読み込み表示に戻る。Scan画面と違い、この画面での
+  // 書き込みは1日に数回程度で、連続してスキャンする操作ではないため、
+  // 他の多くの画面と同じ単純な挙動でよいという判断(意図的にScan画面の
+  // ちらつき防止は導入しない)。
   function reload(): void {
     groups.reload();
     counts.reload();
@@ -210,7 +214,10 @@ function UnsubmittedBody() {
           confirmLabel={
             pending.action === "markAbsent" ? "欠席にする" : "取り消す"
           }
-          onCancel={() => setPending(null)}
+          onCancel={() => {
+            setPending(null);
+            setError(null);
+          }}
           onConfirm={confirmPending}
         />
       )}

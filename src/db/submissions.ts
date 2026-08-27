@@ -59,9 +59,10 @@ export async function recordSubmission(input: {
   const tx = db.transaction("submissions", "readwrite");
   const index = tx.store.index("by-unique");
 
-  // 欠席の記録は上書き対象(既存のidを再利用してputする。by-uniqueは
-  // 一意制約なので、新しいidで別レコードを足そうとすると同期的に
-  // ConstraintErrorが投げられる)。提出済みの記録はスキップする。
+  // 欠席の記録は上書き対象(既存のidを再利用してputする。新しいidで
+  // 別レコードを足すと、by-uniqueの一意インデックス違反がリクエストの
+  // エラーとして非同期に届き、トランザクションを中止させてしまう)。
+  // 提出済みの記録はスキップする。
   const toWrite: { submissionTypeId: string; existingId: string | undefined }[] =
     [];
   for (const submissionTypeId of input.submissionTypeIds) {
