@@ -89,3 +89,66 @@ export async function recordSubmission(input: {
     ? { kind: "recorded", student }
     : { kind: "already", student };
 }
+
+export type MarkAbsentResult = { kind: "marked" } | { kind: "alreadyRecorded" };
+
+/**
+ * 生徒を欠席として記録する。未提出者一覧の未マークセルからのみ呼ばれる想定だが、
+ * 既に記録があれば書き込まずに alreadyRecorded を返す(念のための防御)。
+ */
+export async function markAbsent(input: {
+  cohortId: string;
+  studentId: string;
+  submissionTypeId: string;
+  date: string;
+}): Promise<MarkAbsentResult> {
+  const db = await getDb();
+  const tx = db.transaction("submissions", "readwrite");
+  const index = tx.store.index("by-unique");
+
+  const existing = await index.get([
+    input.date,
+    input.studentId,
+    input.submissionTypeId,
+  ]);
+  if (existing !== undefined) {
+    await tx.done;
+    return { kind: "alreadyRecorded" };
+  }
+
+  await tx.store.put({
+    id: newId(),
+    cohortId: input.cohortId,
+    studentId: input.studentId,
+    submissionTypeId: input.submissionTypeId,
+    date: input.date,
+    submittedAt: Date.now(),
+    status: "absent",
+  });
+  await tx.done;
+  return { kind: "marked" };
+}
+
+/**
+ * 欠席マークを取り消す。status が "absent" の記録だけを消す。
+ * 実提出の記録を誤って消さないための防御。
+ */
+export async function unmarkAbsent(input: {
+  studentId: string;
+  submissionTypeId: string;
+  date: string;
+}): Promise<void> {
+  const db = await getDb();
+  const tx = db.transaction("submissions", "readwrite");
+  const index = tx.store.index("by-unique");
+
+  const existing = await index.get([
+    input.date,
+    input.studentId,
+    input.submissionTypeId,
+  ]);
+  if (existing !== undefined && existing.status === "absent") {
+    await tx.store.delete(existing.id);
+  }
+  await tx.done;
+}

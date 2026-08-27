@@ -3,7 +3,13 @@ import { useFreshDb } from "../test/db";
 import { createCohort } from "./cohorts";
 import { addStudent, transferOutStudent } from "./students";
 import { addSubmissionType } from "./submissionTypes";
-import { countByType, listSubmissions, recordSubmission } from "./submissions";
+import {
+  countByType,
+  listSubmissions,
+  markAbsent,
+  recordSubmission,
+  unmarkAbsent,
+} from "./submissions";
 
 useFreshDb();
 
@@ -180,5 +186,68 @@ describe("countByType", () => {
     const counts = await countByType(cohortId, DATE);
 
     expect(counts.has(readingId)).toBe(false);
+  });
+});
+
+describe("markAbsent", () => {
+  it("記録の無い生徒を欠席として記録する", async () => {
+    const result = await markAbsent({
+      cohortId,
+      studentId,
+      submissionTypeId: drillId,
+      date: DATE,
+    });
+
+    expect(result.kind).toBe("marked");
+    const submissions = await listSubmissions(cohortId, DATE);
+    expect(submissions).toHaveLength(1);
+    expect(submissions[0].status).toBe("absent");
+  });
+
+  it("既に記録がある生徒には書き込まずalreadyRecordedを返す", async () => {
+    await record();
+
+    const result = await markAbsent({
+      cohortId,
+      studentId,
+      submissionTypeId: drillId,
+      date: DATE,
+    });
+
+    expect(result.kind).toBe("alreadyRecorded");
+    const submissions = await listSubmissions(cohortId, DATE);
+    expect(submissions).toHaveLength(1);
+    // この時点の recordSubmission はまだ status を書かない(Task 2で変更する)。
+    // 既存レコードが有る/無いだけを見て弾くことを確認できればよい。
+    expect(submissions[0].status).toBeUndefined();
+  });
+});
+
+describe("unmarkAbsent", () => {
+  it("欠席の記録を削除する", async () => {
+    await markAbsent({
+      cohortId,
+      studentId,
+      submissionTypeId: drillId,
+      date: DATE,
+    });
+
+    await unmarkAbsent({ studentId, submissionTypeId: drillId, date: DATE });
+
+    expect(await listSubmissions(cohortId, DATE)).toHaveLength(0);
+  });
+
+  it("記録が無ければ何もしない", async () => {
+    await unmarkAbsent({ studentId, submissionTypeId: drillId, date: DATE });
+
+    expect(await listSubmissions(cohortId, DATE)).toHaveLength(0);
+  });
+
+  it("提出済みの記録は消さない", async () => {
+    await record();
+
+    await unmarkAbsent({ studentId, submissionTypeId: drillId, date: DATE });
+
+    expect(await listSubmissions(cohortId, DATE)).toHaveLength(1);
   });
 });

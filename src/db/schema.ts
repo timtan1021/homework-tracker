@@ -48,8 +48,10 @@ export type Submission = {
   submissionTypeId: string;
   /** "YYYY-MM-DD" ローカル日付。Dateだとタイムゾーンや時分で同日判定が壊れる。 */
   date: string;
-  /** epoch ms。最初に提出した時刻。二度目のスキャンで上書きしない。 */
+  /** epoch ms。最初に提出（または欠席マーク）した時刻。二度目のスキャンで上書きしない。 */
   submittedAt: number;
+  /** 無ければ "submitted" 扱い（既存レコードとの後方互換）。DB_VERSIONは上げない。 */
+  status?: "submitted" | "absent";
 };
 
 export interface HomeworkDB extends DBSchema {
