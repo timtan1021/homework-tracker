@@ -14,11 +14,11 @@ export type TodayNonSubmitterGroup = {
   type: SubmissionType;
   /** 対象日の締切を、現在時刻の時点で過ぎているか。 */
   deadlinePassed: boolean;
-  /** 記録の無い在籍生徒。出席番号順。 */
-  students: Student[];
+  /** 記録の無い、または欠席とマークされた在籍生徒。出席番号順。 */
+  students: { student: Student; status: "unmarked" | "absent" }[];
 };
 
-/** 今日が提出日のアクティブな提出物ごとに、まだ記録の無い在籍生徒を返す。 */
+/** 今日が提出日のアクティブな提出物ごとに、まだ提出していない在籍生徒を返す。 */
 export async function listTodayNonSubmitters(
   cohortId: string,
   date: string,
@@ -40,18 +40,30 @@ export async function listTodayNonSubmitters(
   );
 
   return dueTypes.map((type) => {
-    const submittedIds = new Set(
+    const byStudent = new Map(
       submissions
         .filter((submission) => submission.submissionTypeId === type.id)
-        .map((submission) => submission.studentId),
+        .map((submission) => [submission.studentId, submission] as const),
     );
+
+    const nonSubmitters: { student: Student; status: "unmarked" | "absent" }[] =
+      [];
+    for (const student of activeStudents) {
+      const submission = byStudent.get(student.id);
+      // statusの無い旧レコードは提出済み扱い(既存レコードとの後方互換)。
+      if (submission !== undefined && submission.status !== "absent") {
+        continue;
+      }
+      nonSubmitters.push({
+        student,
+        status: submission === undefined ? "unmarked" : "absent",
+      });
+    }
 
     return {
       type,
       deadlinePassed: isPastDeadline(date, type.deadline, now),
-      students: activeStudents.filter(
-        (student) => !submittedIds.has(student.id),
-      ),
+      students: nonSubmitters,
     };
   });
 }

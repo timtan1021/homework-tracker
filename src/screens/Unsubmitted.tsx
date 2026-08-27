@@ -75,7 +75,7 @@ function UnsubmittedBody() {
                 <p className="text-sm">{group.type.name}は全員提出しました</p>
               ) : (
                 <ul className="grid grid-cols-4 gap-2 sm:grid-cols-6 md:grid-cols-8">
-                  {group.students.map((student) => (
+                  {group.students.map(({ student }) => (
                     <li
                       key={student.id}
                       className="border-ai text-sumi flex aspect-square min-h-16 items-center justify-center rounded border-2"

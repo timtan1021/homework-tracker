@@ -5,7 +5,7 @@ import { createCohort } from "./cohorts";
 import { getDb } from "./schema";
 import { addStudent, transferOutStudent } from "./students";
 import { addSubmissionType, endSubmissionType } from "./submissionTypes";
-import { recordSubmission } from "./submissions";
+import { markAbsent, recordSubmission } from "./submissions";
 import {
   countRecentNonSubmissions,
   listTodayNonSubmitters,
@@ -84,7 +84,10 @@ describe("listTodayNonSubmitters", () => {
     );
 
     expect(groups).toHaveLength(1);
-    expect(groups[0].students.map((s) => s.attendanceNumber)).toEqual([1]);
+    expect(groups[0].students.map((s) => s.student.attendanceNumber)).toEqual([
+      1,
+    ]);
+    expect(groups[0].students[0].status).toBe("unmarked");
   });
 
   it("転出した生徒は含まない", async () => {
@@ -162,6 +165,62 @@ describe("listTodayNonSubmitters", () => {
     );
 
     expect(groups[0].deadlinePassed).toBe(true);
+  });
+
+  it("欠席とマークした生徒はabsent状態で一覧に残る", async () => {
+    const type = await addSubmissionType({
+      cohortId,
+      name: "計算ドリル",
+      deadline: "08:15",
+      weekdays: [MONDAY],
+    });
+    const student = await addStudent({ cohortId, attendanceNumber: 5 });
+    await markAbsent({
+      cohortId,
+      studentId: student.id,
+      submissionTypeId: type.id,
+      date: DATE,
+    });
+
+    const groups = await listTodayNonSubmitters(
+      cohortId,
+      DATE,
+      new Date(2026, 7, 24, 7, 0),
+    );
+
+    expect(groups[0].students).toHaveLength(1);
+    expect(groups[0].students[0].status).toBe("absent");
+  });
+
+  it("欠席と未マークが混在しても出席番号順を保つ", async () => {
+    const type = await addSubmissionType({
+      cohortId,
+      name: "計算ドリル",
+      deadline: "08:15",
+      weekdays: [MONDAY],
+    });
+    const s1 = await addStudent({ cohortId, attendanceNumber: 1 });
+    await addStudent({ cohortId, attendanceNumber: 2 });
+    await markAbsent({
+      cohortId,
+      studentId: s1.id,
+      submissionTypeId: type.id,
+      date: DATE,
+    });
+
+    const groups = await listTodayNonSubmitters(
+      cohortId,
+      DATE,
+      new Date(2026, 7, 24, 7, 0),
+    );
+
+    expect(groups[0].students.map((s) => s.student.attendanceNumber)).toEqual([
+      1, 2,
+    ]);
+    expect(groups[0].students.map((s) => s.status)).toEqual([
+      "absent",
+      "unmarked",
+    ]);
   });
 });
 
@@ -309,6 +368,37 @@ describe("countRecentNonSubmissions", () => {
     await backdateType(type.id, 30);
     const out = await addStudent({ cohortId, attendanceNumber: 1 });
     await transferOutStudent(out.id);
+
+    const result = await countRecentNonSubmissions(
+      cohortId,
+      today,
+      new Date(),
+      3,
+    );
+
+    expect(result).toEqual([]);
+  });
+
+  it("欠席とマークされた日は未提出カウントに含めない", async () => {
+    const type = await addSubmissionType({
+      cohortId,
+      name: "毎日の提出物",
+      deadline: "00:00",
+      weekdays: EVERY_DAY,
+    });
+    await backdateType(type.id, 30);
+
+    const dates = recentDateKeys(today, 3);
+    const student = await addStudent({ cohortId, attendanceNumber: 1 });
+
+    for (const date of dates) {
+      await markAbsent({
+        cohortId,
+        studentId: student.id,
+        submissionTypeId: type.id,
+        date,
+      });
+    }
 
     const result = await countRecentNonSubmissions(
       cohortId,
