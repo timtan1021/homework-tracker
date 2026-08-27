@@ -1,4 +1,5 @@
 import type { IDBPObjectStore } from "idb";
+import { weekdayOfDateKey } from "../lib/date";
 import { newId } from "../lib/id";
 import { ValidationError } from "./errors";
 import { getDb, type HomeworkDB, type SubmissionType } from "./schema";
@@ -207,7 +208,7 @@ export async function moveSubmissionType(
 
   const target = await requireType(tx.store, id);
   const siblings = (await tx.store.index("by-cohort").getAll(target.cohortId))
-    .filter((type) => type.status === "active")
+    .filter((type) => type.status === "active" && type.date === undefined)
     .sort((a, b) => a.order - b.order);
 
   const index = siblings.findIndex((type) => type.id === id);
@@ -225,4 +226,12 @@ export async function moveSubmissionType(
     tx.store.put({ ...neighbour, order: target.order }),
   ]);
   await tx.done;
+}
+
+/** 対象日にこの提出物が提出日かどうかを判定する。 */
+export function isDueOn(type: SubmissionType, dateKey: string): boolean {
+  if (type.date !== undefined) {
+    return type.date === dateKey;
+  }
+  return type.weekdays.includes(weekdayOfDateKey(dateKey));
 }

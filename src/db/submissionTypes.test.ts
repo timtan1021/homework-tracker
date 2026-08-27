@@ -2,11 +2,13 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { useFreshDb } from "../test/db";
 import { createCohort } from "./cohorts";
 import { ValidationError } from "./errors";
+import { getDb, type SubmissionType } from "./schema";
 import {
   addSubmissionType,
   deleteSubmissionType,
   endSubmissionType,
   getSubmissionType,
+  isDueOn,
   listSubmissionTypes,
   moveSubmissionType,
   normalizeName,
@@ -368,5 +370,82 @@ describe("moveSubmissionType", () => {
       .filter((t) => t.status === "active")
       .map((t) => t.name);
     expect(active).toEqual(["日記", "計算ドリル"]);
+  });
+
+  it("日付指定の項目は並べ替えの対象に含めない", async () => {
+    const a = await drill({ name: "A" });
+    const b = await drill({ name: "B" });
+
+    const db = await getDb();
+    await db.put("submissionTypes", {
+      id: "date-item-1",
+      cohortId,
+      name: "日付指定の宿題",
+      deadline: "08:15",
+      weekdays: [],
+      date: "2026-09-01",
+      status: "active",
+      order: 0,
+      createdAt: Date.now(),
+    });
+
+    await moveSubmissionType(b.id, "up");
+
+    const updatedA = await getSubmissionType(a.id);
+    const updatedB = await getSubmissionType(b.id);
+    expect(updatedB?.order).toBe(a.order);
+    expect(updatedA?.order).toBe(b.order);
+  });
+});
+
+describe("isDueOn", () => {
+  it("曜日繰り返しは対象の曜日にだけtrueを返す", () => {
+    const type: SubmissionType = {
+      id: "t1",
+      cohortId: "c1",
+      name: "計算ドリル",
+      deadline: "08:15",
+      weekdays: [1],
+      status: "active",
+      order: 1,
+      createdAt: Date.now(),
+    };
+
+    expect(isDueOn(type, "2026-08-24")).toBe(true); // 月曜
+    expect(isDueOn(type, "2026-08-25")).toBe(false); // 火曜
+  });
+
+  it("日付指定はその日付にだけtrueを返す", () => {
+    const type: SubmissionType = {
+      id: "t2",
+      cohortId: "c1",
+      name: "計算プリント",
+      deadline: "08:15",
+      weekdays: [],
+      date: "2026-09-01",
+      status: "active",
+      order: 0,
+      createdAt: Date.now(),
+    };
+
+    expect(isDueOn(type, "2026-09-01")).toBe(true);
+    expect(isDueOn(type, "2026-09-02")).toBe(false);
+  });
+
+  it("日付指定は曜日が一致していても対象日以外はfalse", () => {
+    // 2026-09-08は2026-09-01と同じ火曜日
+    const type: SubmissionType = {
+      id: "t3",
+      cohortId: "c1",
+      name: "計算プリント",
+      deadline: "08:15",
+      weekdays: [],
+      date: "2026-09-01",
+      status: "active",
+      order: 0,
+      createdAt: Date.now(),
+    };
+
+    expect(isDueOn(type, "2026-09-08")).toBe(false);
   });
 });

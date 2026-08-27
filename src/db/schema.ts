@@ -33,10 +33,12 @@ export type SubmissionType = {
   name: string;
   /** "HH:mm" 24時間表記。例: "08:15"。Dateだと日付が付いて「毎日この時刻」を表せない。 */
   deadline: string;
-  /** 0=日曜 〜 6=土曜。Date.getDay() と同じ番号。昇順・重複なしで保存する。 */
+  /** 0=日曜 〜 6=土曜。Date.getDay() と同じ番号。昇順・重複なしで保存する。日付指定の場合は使わない([])。 */
   weekdays: number[];
+  /** 日付指定の場合の対象日("YYYY-MM-DD")。曜日繰り返しの場合は無い。 */
+  date?: string;
   status: SubmissionStatus;
-  /** 表示順。小さいほど上。 */
+  /** 表示順。小さいほど上。日付指定の場合は使わない(並べ替えUIに出ないため)。 */
   order: number;
   createdAt: number;
 };
