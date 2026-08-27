@@ -35,9 +35,10 @@ export async function countByType(
 /**
  * 提出を記録する。カメラにも画面にも依存しない。
  *
- * すでに記録済みのものは飛ばし、未記録のものだけ足す。二度目の
- * 呼び出しで submittedAt を上書きしないのは、締切前に出した生徒が
- * 先生の再スキャンで遅刻扱いにならないようにするため。
+ * すでに提出済みのものは飛ばし、未記録のものと欠席の記録は上書きする。
+ * 欠席の記録は既存のidを再利用して上書きすることで、by-unique制約違反を
+ * 回避する。二度目の呼び出しで submittedAt を上書きしないのは、締切前に
+ * 出した生徒が先生の再スキャンで遅刻扱いにならないようにするため。
  */
 export async function recordSubmission(input: {
   cohortId: string;
@@ -58,34 +59,39 @@ export async function recordSubmission(input: {
   const tx = db.transaction("submissions", "readwrite");
   const index = tx.store.index("by-unique");
 
-  const missing: string[] = [];
+  // 欠席の記録は上書き対象(既存のidを再利用してputする。by-uniqueは
+  // 一意制約なので、新しいidで別レコードを足そうとすると同期的に
+  // ConstraintErrorが投げられる)。提出済みの記録はスキップする。
+  const toWrite: { submissionTypeId: string; existingId: string | undefined }[] =
+    [];
   for (const submissionTypeId of input.submissionTypeIds) {
     const existing = await index.get([
       input.date,
       input.studentId,
       submissionTypeId,
     ]);
-    if (existing === undefined) {
-      missing.push(submissionTypeId);
+    if (existing === undefined || existing.status === "absent") {
+      toWrite.push({ submissionTypeId, existingId: existing?.id });
     }
   }
 
   const submittedAt = Date.now();
   await Promise.all(
-    missing.map((submissionTypeId) =>
+    toWrite.map(({ submissionTypeId, existingId }) =>
       tx.store.put({
-        id: newId(),
+        id: existingId ?? newId(),
         cohortId: input.cohortId,
         studentId: input.studentId,
         submissionTypeId,
         date: input.date,
         submittedAt,
+        status: "submitted",
       }),
     ),
   );
   await tx.done;
 
-  return missing.length > 0
+  return toWrite.length > 0
     ? { kind: "recorded", student }
     : { kind: "already", student };
 }

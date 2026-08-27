@@ -147,6 +147,38 @@ describe("recordSubmission", () => {
     expect(result.kind).toBe("already");
     expect(await listSubmissions(cohortId, DATE)).toHaveLength(0);
   });
+
+  it("欠席の記録を提出に上書きする", async () => {
+    await markAbsent({
+      cohortId,
+      studentId,
+      submissionTypeId: drillId,
+      date: DATE,
+    });
+
+    const result = await record();
+
+    expect(result.kind).toBe("recorded");
+    const submissions = await listSubmissions(cohortId, DATE);
+    expect(submissions).toHaveLength(1);
+    expect(submissions[0].status).toBe("submitted");
+  });
+
+  it("欠席から提出への上書きでレコードを複製しない", async () => {
+    await markAbsent({
+      cohortId,
+      studentId,
+      submissionTypeId: drillId,
+      date: DATE,
+    });
+    const absentId = (await listSubmissions(cohortId, DATE))[0].id;
+
+    await record();
+
+    const submissions = await listSubmissions(cohortId, DATE);
+    expect(submissions).toHaveLength(1);
+    expect(submissions[0].id).toBe(absentId);
+  });
 });
 
 describe("listSubmissions", () => {
@@ -217,9 +249,7 @@ describe("markAbsent", () => {
     expect(result.kind).toBe("alreadyRecorded");
     const submissions = await listSubmissions(cohortId, DATE);
     expect(submissions).toHaveLength(1);
-    // この時点の recordSubmission はまだ status を書かない(Task 2で変更する)。
-    // 既存レコードが有る/無いだけを見て弾くことを確認できればよい。
-    expect(submissions[0].status).toBeUndefined();
+    expect(submissions[0].status).toBe("submitted");
   });
 });
 
