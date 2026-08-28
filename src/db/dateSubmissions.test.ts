@@ -54,6 +54,17 @@ describe("addDateSubmission", () => {
     ).rejects.toThrow("日付を選んでください");
   });
 
+  it("締切時刻の形式が不正なら拒否する", async () => {
+    await expect(
+      addDateSubmission({
+        cohortId,
+        name: "テスト",
+        date: "2026-09-01",
+        deadline: "8:15",
+      }),
+    ).rejects.toThrow("締切時刻を入力してください");
+  });
+
   it("同じ名前を複数の日付に登録できる", async () => {
     await addDateSubmission({
       cohortId,

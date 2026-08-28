@@ -15,6 +15,14 @@ function assertValidDate(date: string): void {
   }
 }
 
+/** "HH:mm" のみ受け付ける。input type="time" の値がこの形式。 */
+function assertValidDeadline(deadline: string): void {
+  const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(deadline);
+  if (match === null) {
+    throw new ValidationError("締切時刻を入力してください");
+  }
+}
+
 export async function addDateSubmission(input: {
   cohortId: string;
   name: string;
@@ -23,6 +31,7 @@ export async function addDateSubmission(input: {
 }): Promise<SubmissionType> {
   assertValidName(input.name);
   assertValidDate(input.date);
+  assertValidDeadline(input.deadline);
 
   const db = await getDb();
   const type: SubmissionType = {
