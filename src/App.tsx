@@ -1,5 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router";
 import { SetupGate } from "./components/SetupGate";
+import { Calendar } from "./screens/Calendar";
 import { Print } from "./screens/Print";
 import { Roster } from "./screens/Roster";
 import { UpdateBanner } from "./components/UpdateBanner";
@@ -34,6 +35,7 @@ export function AppRoutes() {
       <Route path="/submissions/new" element={<SubmissionNew />} />
       <Route path="/submissions/:id/edit" element={<SubmissionEdit />} />
       <Route path="/unsubmitted" element={<Unsubmitted />} />
+      <Route path="/calendar" element={<Calendar />} />
       <Route path="*" element={<Navigate to="/scan" replace />} />
     </Routes>
   );

@@ -88,6 +88,12 @@ function RosterBody() {
         >
           未提出者・集計を見る
         </Link>
+        <Link
+          to="/calendar"
+          className="border-ai text-ai rounded border-2 px-4 py-3 text-center font-bold"
+        >
+          宿題をカレンダーで登録
+        </Link>
       </nav>
     </main>
   );

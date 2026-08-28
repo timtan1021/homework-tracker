@@ -168,4 +168,12 @@ describe("下部のボタン", () => {
       await screen.findByRole("link", { name: "未提出者・集計を見る" }),
     ).toHaveAttribute("href", "/unsubmitted");
   });
+
+  it("カレンダーへの導線がある", async () => {
+    renderRoster();
+
+    expect(
+      await screen.findByRole("link", { name: "宿題をカレンダーで登録" }),
+    ).toHaveAttribute("href", "/calendar");
+  });
 });
