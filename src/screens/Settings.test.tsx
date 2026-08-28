@@ -1,11 +1,11 @@
 import { useFreshDb } from "../test/db";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it } from "vitest";
 import { AppRoutes } from "../App";
 import { createCohort, getActiveCohort } from "../db/cohorts";
-import { getSetting } from "../db/settings";
+import { getDefaultDeadline, getSetting } from "../db/settings";
 import { addStudent } from "../db/students";
 import type { BackupFile } from "../backup/types";
 
@@ -41,6 +41,19 @@ describe("設定画面", () => {
     await user.click(checkbox);
 
     expect(await getSetting("showStudentNames")).toBe(true);
+  });
+
+  it("共通締切時刻を変更できる", async () => {
+    renderAt("/settings");
+
+    const input = await screen.findByLabelText("日付指定の宿題の共通締切時刻");
+    await waitFor(() => expect(input).toBeEnabled());
+
+    fireEvent.change(input, { target: { value: "09:00" } });
+
+    await waitFor(async () => {
+      expect(await getDefaultDeadline()).toBe("09:00");
+    });
   });
 
   it("名簿から設定に入れる", async () => {

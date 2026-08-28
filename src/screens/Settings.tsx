@@ -6,11 +6,13 @@ import { FullScreenMessage } from "../components/FullScreenMessage";
 import { backupFileName, buildBackup } from "../backup/export";
 import { parseBackup, restoreBackup } from "../backup/import";
 import { InvalidBackupError, type BackupFile } from "../backup/types";
+import { useDefaultDeadline } from "../hooks/useDefaultDeadline";
 import { useSetting } from "../hooks/useSetting";
 
 function SettingsBody() {
   const cohort = useActiveCohort();
   const showNames = useSetting("showStudentNames");
+  const defaultDeadline = useDefaultDeadline();
 
   const [pendingRestore, setPendingRestore] = useState<BackupFile | null>(
     null,
@@ -109,6 +111,31 @@ function SettingsBody() {
           {showNames.error}
         </p>
       )}
+
+      <section className="border-kogan mt-8 border-b pb-6">
+        <h2 className="font-display text-ai text-lg">
+          日付指定の宿題の共通締切時刻
+        </h2>
+        <p className="mt-2 text-sm">
+          カレンダー画面で日付指定の宿題を登録するときに使う締切時刻です。
+        </p>
+        <label className="mt-3 flex flex-col gap-1">
+          <span className="sr-only">日付指定の宿題の共通締切時刻</span>
+          <input
+            type="time"
+            value={defaultDeadline.value}
+            disabled={defaultDeadline.loading}
+            onChange={(event) => void defaultDeadline.update(event.target.value)}
+            aria-label="日付指定の宿題の共通締切時刻"
+            className="border-ai font-num w-40 rounded border-2 px-3 py-2 text-2xl disabled:opacity-50"
+          />
+        </label>
+        {defaultDeadline.error !== null && (
+          <p role="alert" className="mt-3 text-sm font-bold">
+            {defaultDeadline.error}
+          </p>
+        )}
+      </section>
 
       <section className="border-kogan mt-8 border-b pb-6">
         <h2 className="font-display text-ai text-lg">バックアップ</h2>
