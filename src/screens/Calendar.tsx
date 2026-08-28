@@ -40,6 +40,7 @@ function CalendarBody() {
   const [editing, setEditing] = useState<Editing | null>(null);
   const [editError, setEditError] = useState<string | null>(null);
   const [pending, setPending] = useState<Pending | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const types = useDateSubmissionsInWeek(cohort.id, weekStart);
 
@@ -60,6 +61,12 @@ function CalendarBody() {
   }
 
   function shiftWeek(days: number): void {
+    // 編集中の状態(空欄エラーを含む)を次の週へ持ち越さない。
+    // 持ち越すと、別の週を経由して元の週へ戻ったときに、
+    // 教師が何も操作していないのに同じ入力欄とエラーが再び開く。
+    setEditing(null);
+    setEditError(null);
+    setError(null);
     const next = new Date(dateFromKey(weekStart));
     next.setDate(next.getDate() + days);
     setWeekStart(toDateKey(next));
@@ -87,19 +94,28 @@ function CalendarBody() {
     const current = editing;
     setEditing(null);
     setEditError(null);
+    setError(null);
 
-    if (current.id === null) {
-      const deadline = await getDefaultDeadline();
-      await addDateSubmission({
-        cohortId: cohort.id,
-        name: current.value,
-        date: current.date,
-        deadline,
-      });
-    } else {
-      await updateDateSubmissionName(current.id, current.value);
+    try {
+      if (current.id === null) {
+        const deadline = await getDefaultDeadline();
+        await addDateSubmission({
+          cohortId: cohort.id,
+          name: current.value,
+          date: current.date,
+          deadline,
+        });
+      } else {
+        await updateDateSubmissionName(current.id, current.value);
+      }
+      types.reload();
+    } catch (cause: unknown) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "保存できませんでした。もう一度お試しください",
+      );
     }
-    types.reload();
   }
 
   function handleEditKeyDown(event: KeyboardEvent<HTMLInputElement>): void {
@@ -118,6 +134,12 @@ function CalendarBody() {
           名簿へ
         </Link>
       </header>
+
+      {error !== null && (
+        <p role="alert" className="text-sm font-bold">
+          {error}
+        </p>
+      )}
 
       <div className="flex items-center justify-between gap-3">
         <button
@@ -191,6 +213,7 @@ function CalendarBody() {
                       </button>
                       <button
                         type="button"
+                        aria-label={`${type.name}を削除`}
                         onClick={() =>
                           setPending({ id: type.id, name: type.name })
                         }
@@ -245,7 +268,16 @@ function CalendarBody() {
           onConfirm={() => {
             const id = pending.id;
             setPending(null);
-            void deleteDateSubmission(id).then(() => types.reload());
+            setError(null);
+            void deleteDateSubmission(id)
+              .then(() => types.reload())
+              .catch((cause: unknown) => {
+                setError(
+                  cause instanceof Error
+                    ? cause.message
+                    : "保存できませんでした。もう一度お試しください",
+                );
+              });
           }}
         />
       )}
