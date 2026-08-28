@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { useFreshDb } from "../test/db";
+import { ValidationError } from "./errors";
+import { getDb } from "./schema";
 import { getDefaultDeadline, getSetting, setDefaultDeadline, setSetting } from "./settings";
 
 useFreshDb();
@@ -47,5 +49,29 @@ describe("setDefaultDeadline", () => {
   it("boolean設定とは独立している", async () => {
     await setDefaultDeadline("08:30");
     expect(await getSetting("showStudentNames")).toBe(false);
+  });
+
+  it("空文字は拒否する", async () => {
+    await expect(setDefaultDeadline("")).rejects.toThrow(
+      new ValidationError("締切時刻を入力してください"),
+    );
+  });
+
+  it("0埋めされていない時刻は拒否する", async () => {
+    await expect(setDefaultDeadline("8:15")).rejects.toThrow(
+      new ValidationError("締切時刻を入力してください"),
+    );
+  });
+});
+
+describe("getDefaultDeadline（不正な値が既に保存されている場合）", () => {
+  it("設定画面を経由せず不正な値が書き込まれていてもフォールバックを返す", async () => {
+    const db = await getDb();
+    await db.put("settings", {
+      key: "dateSubmissionDefaultDeadline",
+      value: "garbage",
+    });
+
+    expect(await getDefaultDeadline()).toBe("08:15");
   });
 });

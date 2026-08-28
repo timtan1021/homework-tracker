@@ -27,6 +27,7 @@ export function useDefaultDeadline(): {
       .catch(() => {
         if (!cancelled) {
           setLoading(false);
+          setError("設定を読み込めませんでした。画面を開き直してください");
         }
       });
 

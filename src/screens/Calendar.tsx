@@ -262,8 +262,9 @@ function CalendarBody() {
       {pending !== null && (
         <ConfirmDialog
           title={`「${pending.name}」を削除しますか`}
-          message="この宿題の登録を取り消します"
+          message="記録済みの提出情報も含めて、元に戻せません"
           confirmLabel="削除する"
+          tone="danger"
           onCancel={() => setPending(null)}
           onConfirm={() => {
             const id = pending.id;

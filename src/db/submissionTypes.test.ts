@@ -141,6 +141,27 @@ describe("addSubmissionType", () => {
     );
   });
 
+  it("日付指定の項目と名前が重なってもよい", async () => {
+    // 日付指定の項目(src/db/dateSubmissions.ts経由で追加)は同じストアに同居するが、
+    // 「提出物の設定」画面には表示されない。教師には見えない項目が理由で
+    // 曜日繰り返しの登録が拒否されるのは、原因が分からない詰みになる。
+    const db = await getDb();
+    await db.put("submissionTypes", {
+      id: "date-item-name-clash",
+      cohortId,
+      name: "計算ドリル",
+      deadline: "08:15",
+      weekdays: [],
+      date: "2026-09-01",
+      status: "active",
+      order: 0,
+      createdAt: Date.now(),
+    });
+
+    const type = await drill();
+    expect(type.name).toBe("計算ドリル");
+  });
+
   it("別のcohortとは名前が重なってもよい", async () => {
     const other = await createCohort({ year: 2025, className: "4年1組" });
     await addSubmissionType({

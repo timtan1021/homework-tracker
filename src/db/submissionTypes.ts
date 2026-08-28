@@ -53,7 +53,12 @@ async function assertNameIsFree(
   excludeId: string | null,
 ): Promise<void> {
   const normalized = normalizeName(name);
-  const existing = await store.index("by-cohort").getAll(cohortId);
+  // 日付指定の項目(src/db/dateSubmissions.ts経由で追加)は同じストアに同居するが、
+  // 「提出物の設定」画面には表示されず名前の衝突を教師が確認できない。
+  // 重複チェックの対象から外し、曜日繰り返し側の名前を独立に扱う。
+  const existing = (await store.index("by-cohort").getAll(cohortId)).filter(
+    (type) => type.date === undefined,
+  );
 
   const taken = existing.find(
     (type) => type.id !== excludeId && normalizeName(type.name) === normalized,
