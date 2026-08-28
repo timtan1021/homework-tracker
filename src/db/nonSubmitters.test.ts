@@ -5,6 +5,7 @@ import { createCohort } from "./cohorts";
 import { getDb } from "./schema";
 import { addStudent, transferOutStudent } from "./students";
 import { addSubmissionType, endSubmissionType } from "./submissionTypes";
+import { addDateSubmission } from "./dateSubmissions";
 import { markAbsent, recordSubmission } from "./submissions";
 import {
   countRecentNonSubmissions,
@@ -222,6 +223,43 @@ describe("listTodayNonSubmitters", () => {
       "unmarked",
     ]);
   });
+
+  it("日付指定の提出物は対象日にだけ未提出者一覧に出る", async () => {
+    await addDateSubmission({
+      cohortId,
+      name: "計算プリント",
+      date: DATE,
+      deadline: "08:15",
+    });
+    await addStudent({ cohortId, attendanceNumber: 1 });
+
+    const groups = await listTodayNonSubmitters(
+      cohortId,
+      DATE,
+      new Date(2026, 7, 24, 7, 0),
+    );
+
+    expect(groups).toHaveLength(1);
+    expect(groups[0].type.name).toBe("計算プリント");
+  });
+
+  it("日付指定の提出物は対象日以外には出ない", async () => {
+    await addDateSubmission({
+      cohortId,
+      name: "計算プリント",
+      date: "2026-08-25",
+      deadline: "08:15",
+    });
+    await addStudent({ cohortId, attendanceNumber: 1 });
+
+    const groups = await listTodayNonSubmitters(
+      cohortId,
+      DATE,
+      new Date(2026, 7, 24, 7, 0),
+    );
+
+    expect(groups).toEqual([]);
+  });
 });
 
 /** 提出物のcreatedAtを過去にずらす。集計期間より前に作られたことにするため。 */
@@ -408,5 +446,26 @@ describe("countRecentNonSubmissions", () => {
     );
 
     expect(result).toEqual([]);
+  });
+
+  it("日付指定の提出物は対象日だけを未提出カウントに含める", async () => {
+    await addDateSubmission({
+      cohortId,
+      name: "日付指定の宿題",
+      date: today,
+      deadline: "00:00",
+    });
+    const student = await addStudent({ cohortId, attendanceNumber: 1 });
+
+    const result = await countRecentNonSubmissions(
+      cohortId,
+      today,
+      new Date(),
+      3,
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0].student.id).toBe(student.id);
+    expect(result[0].count).toBe(1);
   });
 });

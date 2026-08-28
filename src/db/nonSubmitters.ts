@@ -2,12 +2,11 @@ import {
   isPastDeadline,
   recentDateKeys,
   toDateKey,
-  weekdayOfDateKey,
 } from "../lib/date";
 import type { Student, SubmissionType } from "./schema";
 import { getDb } from "./schema";
 import { listStudents } from "./students";
-import { listSubmissionTypes } from "./submissionTypes";
+import { isDueOn, listSubmissionTypes } from "./submissionTypes";
 import { listSubmissions } from "./submissions";
 
 export type TodayNonSubmitterGroup = {
@@ -34,9 +33,8 @@ export async function listTodayNonSubmitters(
     (student) => student.status === "active",
   );
 
-  const weekday = weekdayOfDateKey(date);
   const dueTypes = types.filter(
-    (type) => type.status === "active" && type.weekdays.includes(weekday),
+    (type) => type.status === "active" && isDueOn(type, date),
   );
 
   return dueTypes.map((type) => {
@@ -113,10 +111,8 @@ export async function countRecentNonSubmissions(
 
   const counts = new Map<string, number>();
   for (const date of dates) {
-    const weekday = weekdayOfDateKey(date);
-
     for (const type of activeTypes) {
-      if (!type.weekdays.includes(weekday)) {
+      if (!isDueOn(type, date)) {
         continue;
       }
       // 提出物が作られる前の日付は、その提出物についてカウントしない。

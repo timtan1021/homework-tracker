@@ -7,6 +7,7 @@ import { NumberPad } from "../components/NumberPad";
 import { ScanResult } from "../components/ScanResult";
 import { SubmissionToggleBar } from "../components/SubmissionToggleBar";
 import { recordSubmission, type RecordResult } from "../db/submissions";
+import { isDueOn } from "../db/submissionTypes";
 import { useStudents } from "../hooks/useStudents";
 import { useSubmissions } from "../hooks/useSubmissions";
 import { useQrCamera } from "../hooks/useQrCamera";
@@ -70,9 +71,7 @@ function ScanBody() {
     submissions.status === "ready" ? submissions.data : [];
 
   const activeTypes = types.data.filter((type) => type.status === "active");
-  const todayTypes = activeTypes.filter((type) =>
-    type.weekdays.includes(today.getDay()),
-  );
+  const todayTypes = activeTypes.filter((type) => isDueOn(type, date));
 
   // 初期状態は全部ON。毎朝すべてを確認するのが通常で、
   // 先生が毎回選び直す手間を省く。

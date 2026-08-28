@@ -10,6 +10,7 @@ import {
   endSubmissionType,
   listSubmissionTypes,
 } from "../db/submissionTypes";
+import { addDateSubmission } from "../db/dateSubmissions";
 
 useFreshDb();
 
@@ -174,4 +175,19 @@ describe("導線", () => {
 
     expect(await screen.findByText("提出物0件・終了0")).toBeInTheDocument();
   });
+});
+
+it("日付指定の提出物は一覧に出さない", async () => {
+  await add("毎週の宿題");
+  await addDateSubmission({
+    cohortId,
+    name: "日付指定の宿題",
+    date: "2026-09-01",
+    deadline: "08:15",
+  });
+
+  renderList();
+
+  await screen.findByText("毎週の宿題");
+  expect(screen.queryByText("日付指定の宿題")).toBeNull();
 });

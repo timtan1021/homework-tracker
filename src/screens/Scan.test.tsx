@@ -7,6 +7,7 @@ import { AppRoutes } from "../App";
 import { createCohort } from "../db/cohorts";
 import { addStudent, transferOutStudent } from "../db/students";
 import { addSubmissionType, endSubmissionType } from "../db/submissionTypes";
+import { addDateSubmission } from "../db/dateSubmissions";
 import { listSubmissions } from "../db/submissions";
 import { formatDateHeading, toDateKey } from "../lib/date";
 
@@ -19,6 +20,10 @@ const TODAY = new Date();
 const TODAY_KEY = toDateKey(TODAY);
 const TODAY_WEEKDAY = TODAY.getDay();
 const OTHER_WEEKDAY = (TODAY_WEEKDAY + 1) % 7;
+
+const YESTERDAY = new Date(TODAY);
+YESTERDAY.setDate(YESTERDAY.getDate() - 1);
+const YESTERDAY_KEY = toDateKey(YESTERDAY);
 
 let cohortId = "";
 
@@ -78,6 +83,30 @@ describe("提出物の選択", () => {
       await screen.findByRole("button", { name: /計算ドリル/ }),
     ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /日記/ })).toBeNull();
+  });
+
+  it("日付指定の提出物は対象日にだけ並べる", async () => {
+    await addDateSubmission({
+      cohortId,
+      name: "今日締切の日付指定",
+      date: TODAY_KEY,
+      deadline: "08:15",
+    });
+    await addDateSubmission({
+      cohortId,
+      name: "別の日の日付指定",
+      date: YESTERDAY_KEY,
+      deadline: "08:15",
+    });
+
+    renderScan();
+
+    expect(
+      await screen.findByRole("button", { name: /今日締切の日付指定/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /別の日の日付指定/ }),
+    ).toBeNull();
   });
 
   it("終了した提出物は並べない", async () => {

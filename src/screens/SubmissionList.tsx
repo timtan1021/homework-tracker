@@ -17,7 +17,7 @@ function SubmissionListBody() {
     return <FullScreenMessage tone="error">{types.message}</FullScreenMessage>;
   }
 
-  const list = types.data;
+  const list = types.data.filter((type) => type.date === undefined);
   const active = list.filter((type) => type.status === "active");
   const ended = list.filter((type) => type.status === "ended");
 
