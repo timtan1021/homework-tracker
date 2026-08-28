@@ -65,3 +65,26 @@ export function recentDateKeys(endDate: string, days: number): string[] {
     return toDateKey(current);
   });
 }
+
+/** "YYYY-MM-DD" をローカル時刻の Date に戻す。 */
+export function dateFromKey(dateKey: string): Date {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+/** dateKey を含む週の日曜日を返す("YYYY-MM-DD")。 */
+export function startOfWeek(dateKey: string): string {
+  const date = dateFromKey(dateKey);
+  date.setDate(date.getDate() - date.getDay());
+  return toDateKey(date);
+}
+
+/** startDate から7日分の日付キーを、古い順に返す。 */
+export function weekDates(startDate: string): string[] {
+  const start = dateFromKey(startDate);
+  return Array.from({ length: 7 }, (_, i) => {
+    const current = new Date(start);
+    current.setDate(current.getDate() + i);
+    return toDateKey(current);
+  });
+}

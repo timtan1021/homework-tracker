@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  dateFromKey,
   formatDateHeading,
   isPastDeadline,
   recentDateKeys,
+  startOfWeek,
   toDateKey,
+  weekDates,
   weekdayOfDateKey,
 } from "./date";
 
@@ -104,5 +107,55 @@ describe("recentDateKeys", () => {
 
   it("days=1ならendDateだけ返す", () => {
     expect(recentDateKeys("2026-08-25", 1)).toEqual(["2026-08-25"]);
+  });
+});
+
+describe("dateFromKey", () => {
+  it("YYYY-MM-DDをローカル時刻のDateに戻す", () => {
+    const date = dateFromKey("2026-08-24");
+    expect(date.getFullYear()).toBe(2026);
+    expect(date.getMonth()).toBe(7); // 0始まり
+    expect(date.getDate()).toBe(24);
+  });
+});
+
+describe("startOfWeek", () => {
+  it("週の日曜日を返す(2026-08-24は月曜)", () => {
+    expect(startOfWeek("2026-08-24")).toBe("2026-08-23");
+  });
+
+  it("日曜日自身を渡すと同じ日を返す", () => {
+    expect(startOfWeek("2026-08-23")).toBe("2026-08-23");
+  });
+
+  it("月をまたぐ週も正しく計算する", () => {
+    // 2026-09-01は火曜
+    expect(startOfWeek("2026-09-01")).toBe("2026-08-30");
+  });
+});
+
+describe("weekDates", () => {
+  it("startDateから7日分を古い順に返す", () => {
+    expect(weekDates("2026-08-23")).toEqual([
+      "2026-08-23",
+      "2026-08-24",
+      "2026-08-25",
+      "2026-08-26",
+      "2026-08-27",
+      "2026-08-28",
+      "2026-08-29",
+    ]);
+  });
+
+  it("月をまたぐ週も正しく返す", () => {
+    expect(weekDates("2026-08-30")).toEqual([
+      "2026-08-30",
+      "2026-08-31",
+      "2026-09-01",
+      "2026-09-02",
+      "2026-09-03",
+      "2026-09-04",
+      "2026-09-05",
+    ]);
   });
 });

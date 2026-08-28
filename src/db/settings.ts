@@ -19,3 +19,17 @@ export async function setSetting(key: SettingKey, value: boolean): Promise<void>
   const db = await getDb();
   await db.put("settings", { key, value });
 }
+
+const DEFAULT_DEADLINE_KEY = "dateSubmissionDefaultDeadline";
+const DEFAULT_DEADLINE_FALLBACK = "08:15";
+
+export async function getDefaultDeadline(): Promise<string> {
+  const db = await getDb();
+  const row = await db.get("settings", DEFAULT_DEADLINE_KEY);
+  return typeof row?.value === "string" ? row.value : DEFAULT_DEADLINE_FALLBACK;
+}
+
+export async function setDefaultDeadline(deadline: string): Promise<void> {
+  const db = await getDb();
+  await db.put("settings", { key: DEFAULT_DEADLINE_KEY, value: deadline });
+}
