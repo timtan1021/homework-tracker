@@ -30,17 +30,17 @@ function toBase64(bytes: Uint8Array): string {
   return btoa(String.fromCharCode(...bytes));
 }
 
-function fromBase64(text: string): Uint8Array {
-  return Uint8Array.from(atob(text), (character) => character.charCodeAt(0));
+function fromBase64(text: string): Uint8Array<ArrayBuffer> {
+  return Uint8Array.from(atob(text), (character) => character.charCodeAt(0)) as Uint8Array<ArrayBuffer>;
 }
 
-function randomSalt(): Uint8Array {
-  return crypto.getRandomValues(new Uint8Array(SALT_BYTES));
+function randomSalt(): Uint8Array<ArrayBuffer> {
+  return crypto.getRandomValues(new Uint8Array(SALT_BYTES)) as Uint8Array<ArrayBuffer>;
 }
 
 async function derive(
   secret: string,
-  salt: Uint8Array,
+  salt: Uint8Array<ArrayBuffer>,
   iterations: number,
 ): Promise<string> {
   const key = await crypto.subtle.importKey(
