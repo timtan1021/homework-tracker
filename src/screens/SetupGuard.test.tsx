@@ -1,19 +1,14 @@
 import { useFreshDb } from "../test/db";
-import { render, screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router";
+import { screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { AppRoutes } from "../App";
+import { renderAsTeacher } from "../test/router";
 import { createCohort, getActiveCohort } from "../db/cohorts";
 import { addStudent, listStudents } from "../db/students";
 
 useFreshDb();
 
 function renderAt(path: string) {
-  return render(
-    <MemoryRouter initialEntries={[path]}>
-      <AppRoutes />
-    </MemoryRouter>,
-  );
+  return renderAsTeacher(path);
 }
 
 describe("cohortがある状態で初回セットアップを開いたとき", () => {

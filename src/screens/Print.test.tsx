@@ -1,10 +1,9 @@
 import { readFileSync } from "node:fs";
 import { URL as NodeURL } from "node:url";
-import { render, screen, waitFor, within } from "@testing-library/react";
-import { MemoryRouter } from "react-router";
+import { screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 import { useFreshDb } from "../test/db";
-import { AppRoutes } from "../App";
+import { renderAsTeacher } from "../test/router";
 import {
   CARD_HEIGHT_MM,
   CARD_WIDTH_MM,
@@ -31,11 +30,7 @@ beforeEach(async () => {
 });
 
 function renderPrint() {
-  return render(
-    <MemoryRouter initialEntries={["/print"]}>
-      <AppRoutes />
-    </MemoryRouter>,
-  );
+  return renderAsTeacher("/print");
 }
 
 async function addStudents(count: number): Promise<void> {

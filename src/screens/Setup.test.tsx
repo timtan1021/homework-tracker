@@ -1,20 +1,15 @@
 import { useFreshDb } from "../test/db";
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
-import { AppRoutes } from "../App";
+import { renderAsTeacher } from "../test/router";
 import { getActiveCohort } from "../db/cohorts";
 import type { BackupFile } from "../backup/types";
 
 useFreshDb();
 
 function renderAt(path: string) {
-  return render(
-    <MemoryRouter initialEntries={[path]}>
-      <AppRoutes />
-    </MemoryRouter>,
-  );
+  return renderAsTeacher(path);
 }
 
 describe("初回セットアップ", () => {

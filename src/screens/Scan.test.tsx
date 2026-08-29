@@ -1,9 +1,8 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it } from "vitest";
 import { useFreshDb } from "../test/db";
-import { AppRoutes } from "../App";
+import { renderAsTeacher } from "../test/router";
 import { createCohort } from "../db/cohorts";
 import { addStudent, transferOutStudent } from "../db/students";
 import { addSubmissionType, endSubmissionType } from "../db/submissionTypes";
@@ -37,11 +36,7 @@ function addType(name: string, weekdays = [TODAY_WEEKDAY]) {
 }
 
 function renderScan() {
-  return render(
-    <MemoryRouter initialEntries={["/scan"]}>
-      <AppRoutes />
-    </MemoryRouter>,
-  );
+  return renderAsTeacher("/scan");
 }
 
 describe("日付と導線", () => {
@@ -58,11 +53,7 @@ describe("日付と導線", () => {
     const user = userEvent.setup();
     await addType("計算ドリル");
 
-    render(
-      <MemoryRouter initialEntries={["/roster"]}>
-        <AppRoutes />
-      </MemoryRouter>,
-    );
+    renderAsTeacher("/roster");
 
     await user.click(await screen.findByRole("link", { name: "提出チェック" }));
 

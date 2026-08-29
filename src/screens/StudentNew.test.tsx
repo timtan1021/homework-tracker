@@ -1,9 +1,8 @@
 import { useFreshDb } from "../test/db";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it } from "vitest";
-import { AppRoutes } from "../App";
+import { renderAsTeacher } from "../test/router";
 import { createCohort } from "../db/cohorts";
 import { setSetting } from "../db/settings";
 import { addStudent, listStudents, transferOutStudent } from "../db/students";
@@ -18,11 +17,7 @@ beforeEach(async () => {
 });
 
 function renderNew() {
-  return render(
-    <MemoryRouter initialEntries={["/roster/new"]}>
-      <AppRoutes />
-    </MemoryRouter>,
-  );
+  return renderAsTeacher("/roster/new");
 }
 
 describe("出席番号の初期値", () => {

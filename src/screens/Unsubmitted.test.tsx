@@ -1,9 +1,8 @@
 import { useFreshDb } from "../test/db";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { AppRoutes } from "../App";
+import { renderAsTeacher } from "../test/router";
 import { createCohort } from "../db/cohorts";
 import { addStudent, transferOutStudent } from "../db/students";
 import { addSubmissionType } from "../db/submissionTypes";
@@ -26,11 +25,7 @@ beforeEach(async () => {
 });
 
 function renderAt(path: string) {
-  return render(
-    <MemoryRouter initialEntries={[path]}>
-      <AppRoutes />
-    </MemoryRouter>,
-  );
+  return renderAsTeacher(path);
 }
 
 describe("未提出者・集計画面", () => {

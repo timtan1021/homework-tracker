@@ -1,9 +1,8 @@
 import { useFreshDb } from "../test/db";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { AppRoutes } from "../App";
+import { renderAsTeacher } from "../test/router";
 import { createCohort } from "../db/cohorts";
 import { addDateSubmission, listDateSubmissionsInWeek } from "../db/dateSubmissions";
 import * as dateSubmissionsModule from "../db/dateSubmissions";
@@ -20,11 +19,7 @@ beforeEach(async () => {
 });
 
 function renderAt(path: string) {
-  return render(
-    <MemoryRouter initialEntries={[path]}>
-      <AppRoutes />
-    </MemoryRouter>,
-  );
+  return renderAsTeacher(path);
 }
 
 describe("カレンダー画面", () => {

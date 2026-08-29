@@ -1,9 +1,8 @@
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it } from "vitest";
 import { useFreshDb } from "../test/db";
-import { AppRoutes } from "../App";
+import { renderAsTeacher } from "../test/router";
 import { createCohort } from "../db/cohorts";
 import {
   addSubmissionType,
@@ -21,11 +20,7 @@ beforeEach(async () => {
 });
 
 function renderNew() {
-  return render(
-    <MemoryRouter initialEntries={["/submissions/new"]}>
-      <AppRoutes />
-    </MemoryRouter>,
-  );
+  return renderAsTeacher("/submissions/new");
 }
 
 describe("初期値", () => {

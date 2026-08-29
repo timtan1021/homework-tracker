@@ -1,9 +1,8 @@
-import { render, screen, within } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it } from "vitest";
 import { useFreshDb } from "../test/db";
-import { AppRoutes } from "../App";
+import { renderAsTeacher } from "../test/router";
 import { createCohort } from "../db/cohorts";
 import {
   addSubmissionType,
@@ -26,11 +25,7 @@ function add(name = "計算ドリル", weekdays = [1, 2, 3, 4, 5]) {
 }
 
 function renderEdit(id: string) {
-  return render(
-    <MemoryRouter initialEntries={[`/submissions/${id}/edit`]}>
-      <AppRoutes />
-    </MemoryRouter>,
-  );
+  return renderAsTeacher(`/submissions/${id}/edit`);
 }
 
 describe("読み込み", () => {

@@ -1,9 +1,8 @@
 import { useFreshDb } from "../test/db";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it } from "vitest";
-import { AppRoutes } from "../App";
+import { renderAsTeacher } from "../test/router";
 import { createCohort, getActiveCohort } from "../db/cohorts";
 import { getDefaultDeadline, getSetting } from "../db/settings";
 import { addStudent } from "../db/students";
@@ -19,11 +18,7 @@ beforeEach(async () => {
 });
 
 function renderAt(path: string) {
-  return render(
-    <MemoryRouter initialEntries={[path]}>
-      <AppRoutes />
-    </MemoryRouter>,
-  );
+  return renderAsTeacher(path);
 }
 
 describe("設定画面", () => {

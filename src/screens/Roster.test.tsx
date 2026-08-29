@@ -1,9 +1,8 @@
 import { useFreshDb } from "../test/db";
-import { render, screen, within } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it } from "vitest";
-import { AppRoutes } from "../App";
+import { renderAsTeacher } from "../test/router";
 import { createCohort } from "../db/cohorts";
 import { getSetting, setSetting } from "../db/settings";
 import { addStudent, transferOutStudent } from "../db/students";
@@ -18,11 +17,7 @@ beforeEach(async () => {
 });
 
 function renderRoster() {
-  return render(
-    <MemoryRouter initialEntries={["/roster"]}>
-      <AppRoutes />
-    </MemoryRouter>,
-  );
+  return renderAsTeacher("/roster");
 }
 
 describe("名簿のヘッダー", () => {

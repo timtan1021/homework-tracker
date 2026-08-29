@@ -1,9 +1,8 @@
 import { useFreshDb } from "../test/db";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it } from "vitest";
-import { AppRoutes } from "../App";
+import { renderAsTeacher } from "../test/router";
 import { createCohort } from "../db/cohorts";
 import { setSetting } from "../db/settings";
 import {
@@ -23,11 +22,7 @@ beforeEach(async () => {
 });
 
 function renderEdit(studentId: string) {
-  return render(
-    <MemoryRouter initialEntries={[`/roster/${studentId}/edit`]}>
-      <AppRoutes />
-    </MemoryRouter>,
-  );
+  return renderAsTeacher(`/roster/${studentId}/edit`);
 }
 
 describe("読み込み", () => {

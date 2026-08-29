@@ -1,9 +1,8 @@
-import { render, screen, within } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it } from "vitest";
 import { useFreshDb } from "../test/db";
-import { AppRoutes } from "../App";
+import { renderAsTeacher } from "../test/router";
 import { createCohort } from "../db/cohorts";
 import {
   addSubmissionType,
@@ -26,11 +25,7 @@ function add(name: string, weekdays = [1, 2, 3, 4, 5], deadline = "08:15") {
 }
 
 function renderList() {
-  return render(
-    <MemoryRouter initialEntries={["/submissions"]}>
-      <AppRoutes />
-    </MemoryRouter>,
-  );
+  return renderAsTeacher("/submissions");
 }
 
 describe("ヘッダー", () => {
@@ -165,11 +160,7 @@ describe("導線", () => {
 
   it("名簿から提出物の設定に入れる", async () => {
     const user = userEvent.setup();
-    render(
-      <MemoryRouter initialEntries={["/roster"]}>
-        <AppRoutes />
-      </MemoryRouter>,
-    );
+    renderAsTeacher("/roster");
 
     await user.click(await screen.findByRole("link", { name: "提出物の設定" }));
 
