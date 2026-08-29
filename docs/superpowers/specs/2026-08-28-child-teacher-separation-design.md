@@ -85,6 +85,16 @@ type TeacherAuthValue = {
 
 パスワードの検証そのものは `TeacherGate` が db 層を呼んで行い、成功したときに `signIn()` を呼ぶ。Provider は検証を知らない。
 
+**Context を export する。** テストが認証済み状態を作るためで、これが唯一の注入口になる。
+
+```tsx
+export const TeacherAuthContext = createContext<TeacherAuthValue | null>(null);
+```
+
+`TeacherAuthProvider` に `initialAuthenticated` のような prop は**持たせない**。本番のコンポーネントに認証を素通りさせる引数を作ると、いつか本番の呼び出し側で渡される。テストは Provider を使わず Context に直接値を与える。
+
+`TeacherGate` は Context が `null`（Provider の外）なら例外を投げる — `useActiveCohort` と同じ形にする。フェイルクローズであり、Provider を付け忘れたルートが認証なしで通ってしまう事故を防ぐ。
+
 ### 3.3 教員画面から児童画面へ戻る
 
 `AppHeader`（教員画面が共通で使うヘッダ）に「児童画面に戻る」を追加する。押すと `signOut()` して `/` へ `navigate` する。
@@ -239,6 +249,19 @@ crypto.subtle が無い → 「httpsで開いてください」（後述）
 
 文言はひらがなを多くする。花丸は既存の `Hanamaru` をそのまま使う（朱の使用は花丸に限る、という制約に沿う）。
 
+### 6.1 何も出せない状態の文言
+
+教員用スキャン画面は、提出物が未登録なら「まず提出物を登録してください」と `/submissions` へのリンクを出す。児童画面では**子供に打つ手が無い**ので、設定画面へは誘導せず、先生を呼ぶよう促す。
+
+| 状態 | 児童画面の表示 |
+|---|---|
+| 提出物が1つも登録されていない | きょうは だすものが ありません |
+| 今日が提出日の宿題が無い | きょうは だすものが ありません |
+| カメラが使えない・許可されていない | せんせいを よんでください |
+| 提出物を選んでいない | だしたものを えらんでね |
+
+`FullScreenMessage` を児童画面のエラー表示に使うときは `showBackLink={false}` を渡す。既定の戻り先は `/roster`（教員ルート）であり、子供には開けないリンクを出しても意味がない。
+
 ## 7. エラー処理
 
 **`crypto.subtle` が使えない場合。** セキュアコンテキスト（HTTPSまたはlocalhost）でなければ `crypto.subtle` は存在しない。この状態ではパスワードの検証ができない。
@@ -323,3 +346,13 @@ CLAUDE.mdの方針に従い、**各タスクで「わざと壊してテストが
 - 児童が実際にQRカードをかざす高さ・距離でカメラが読み取れる（教室に据え置いた場合の画角。先生が手に持つ場合と条件が変わる）
 
 新規ファイル: `src/db/teacherAuth.ts`、`src/lib/passphrase.ts`、`src/components/TeacherAuthProvider.tsx`、`src/components/TeacherGate.tsx`、`src/screens/TeacherPasswordSetup.tsx`、`src/screens/TeacherLogin.tsx`、`src/screens/KidsScan.tsx`
+
+### 10.1 既存テストへの影響
+
+**12個の既存テストファイルが赤くなる。** これらは `<MemoryRouter><AppRoutes /></MemoryRouter>` の形で教員ルートを直接開いており、`TeacherGate` が入るとパスワード画面に阻まれる。
+
+対象: `Print` `Calendar` `Roster` `Settings` `Scan` `StudentEdit` `StudentNew` `SubmissionList` `SubmissionNew` `SubmissionEdit` `Unsubmitted` `Home`（`Setup` と `SetupGuard` は `/setup` を開くので影響を受けない。`SettingsSaveFailure` と `SettingsRestoreFailure` は画面コンポーネントを直接レンダーするので影響を受けない）
+
+`src/test/router.tsx` に認証済みでレンダーするヘルパーを置き、対象ファイルの `render` をそれに差し替える。**ガードの追加とテストの移行は同じタスクで行う** — 分けると赤いままコミットすることになる。
+
+`Home.test.tsx` は意味そのものが変わる。現在は「`/` を開くとスキャン画面が出る」を検証しているが、`/` は児童画面になる。「`/` は児童画面」「知らないパスは `/` へ送る」の2つに書き直す。
