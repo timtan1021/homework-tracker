@@ -37,6 +37,28 @@ describe("パスワード未設定のとき", () => {
     await screen.findByText("先生用のパスワードを決めてください");
     expect(screen.queryByText("名簿の中身")).not.toBeInTheDocument();
   });
+
+  it("設定を最後まで終えると中身が出る", async () => {
+    const user = userEvent.setup();
+    renderGate();
+
+    await user.type(
+      await screen.findByLabelText("パスワード"),
+      "あさのかい",
+    );
+    await user.type(
+      screen.getByLabelText("パスワード（もう一度）"),
+      "あさのかい",
+    );
+    await user.click(screen.getByRole("button", { name: "決定" }));
+
+    await user.click(
+      await screen.findByLabelText("紙に控えました"),
+    );
+    await user.click(screen.getByRole("button", { name: "はじめる" }));
+
+    expect(await screen.findByText("名簿の中身")).toBeInTheDocument();
+  });
 });
 
 describe("パスワード設定済みのとき", () => {

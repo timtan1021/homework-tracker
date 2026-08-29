@@ -119,7 +119,19 @@ describe("スキャン", () => {
     await screen.findByText("だしたものを えらんでね");
     await scanCard(student.id);
 
+    // ガードが外れて recordSubmission が呼ばれてしまっていた場合、
+    // その書き込みは非同期に完了する。判定を1回だけ即座に行うと、
+    // ガードが無くても書き込みがまだ終わっておらず素通りしてしまう
+    // （このプロジェクトが繰り返し踏んだ「非同期の内容を1回だけ見て
+    // 判定する」競合と同じ形）。実際に猶予を与えてから判定する。
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
     expect(await listSubmissions(cohortId, TODAY_KEY)).toHaveLength(0);
+    expect(
+      screen.queryByText(`${student.attendanceNumber}番`),
+    ).not.toBeInTheDocument();
   });
 
   it("選んでからかざすと記録する", async () => {

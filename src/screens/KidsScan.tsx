@@ -130,23 +130,26 @@ function KidsScanBody() {
 
           <ScanResult result={result} />
 
-          {selectedIds.length === 0 ? (
-            <p className="py-8 text-center text-xl font-bold">
-              だしたものを えらんでね
-            </p>
-          ) : cameraUsable ? (
-            <CameraView
-              state={camera.state}
-              message={camera.message}
-              videoRef={camera.videoRef}
-              canvasRef={camera.canvasRef}
-            />
-          ) : (
+          {!cameraUsable ? (
             // useQrCamera の文言は「番号でチェックしてください」と促すが、
             // この画面に番号パッドは無い。子供に打つ手が無い指示を出さない。
             <p className="py-8 text-center text-xl font-bold">
               せんせいを よんでください
             </p>
+          ) : (
+            <>
+              {selectedIds.length === 0 && (
+                <p className="py-4 text-center text-xl font-bold">
+                  だしたものを えらんでね
+                </p>
+              )}
+              <CameraView
+                state={camera.state}
+                message={camera.message}
+                videoRef={camera.videoRef}
+                canvasRef={camera.canvasRef}
+              />
+            </>
           )}
         </>
       )}
