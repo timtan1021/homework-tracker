@@ -9,20 +9,28 @@ import { dateFromKey, formatDateHeading } from "../lib/date";
 type TypeGroup = { typeId: string; typeName: string; items: GradingItem[] };
 
 /**
- * 提出物ごとにまとめる。listGradingItems が提出物の表示順→日付→出席番号で
- * 既に並べているため、同じ提出物のitemは必ず連続している。
+ * 提出物ごとにまとめる。日付指定の提出物はorderが常に0のため、同日締切の
+ * 複数項目が並ぶと表示順→日付のタイブレークが同点になり、出席番号だけで
+ * 順位が決まって同じ提出物のitemが配列上で連続しないことがある。そのため
+ * 配列の隣接ではなくtype.idをキーにしたMapでグルーピングする。itemsは
+ * 既にtype.order順に並んでいるため、Mapの挿入順をそのままグループの
+ * 並び順として使える。
  */
 function groupByType(items: GradingItem[]): TypeGroup[] {
-  const groups: TypeGroup[] = [];
+  const groups = new Map<string, TypeGroup>();
   for (const item of items) {
-    const last = groups[groups.length - 1];
-    if (last !== undefined && last.typeId === item.type.id) {
-      last.items.push(item);
+    const existing = groups.get(item.type.id);
+    if (existing !== undefined) {
+      existing.items.push(item);
     } else {
-      groups.push({ typeId: item.type.id, typeName: item.type.name, items: [item] });
+      groups.set(item.type.id, {
+        typeId: item.type.id,
+        typeName: item.type.name,
+        items: [item],
+      });
     }
   }
-  return groups;
+  return [...groups.values()];
 }
 
 function GradingRow({
@@ -46,7 +54,7 @@ function GradingRow({
       <div className="flex shrink-0 gap-2">
         <button
           type="button"
-          aria-label={`${dateLabel}の${student.attendanceNumber}番を合格にする`}
+          aria-label={`${dateLabel}の${student.attendanceNumber}番（${item.type.name}）を合格にする`}
           onClick={() => onGrade(submission.id, "passed")}
           className="bg-ai min-h-11 rounded px-3 font-bold text-gayoshi"
         >
@@ -55,7 +63,7 @@ function GradingRow({
         {onClear === undefined ? (
           <button
             type="button"
-            aria-label={`${dateLabel}の${student.attendanceNumber}番を再提出にする`}
+            aria-label={`${dateLabel}の${student.attendanceNumber}番（${item.type.name}）を再提出にする`}
             onClick={() => onGrade(submission.id, "resubmit")}
             className="border-ai text-ai min-h-11 rounded border-2 px-3 font-bold"
           >
@@ -64,7 +72,7 @@ function GradingRow({
         ) : (
           <button
             type="button"
-            aria-label={`${dateLabel}の${student.attendanceNumber}番を未採点に戻す`}
+            aria-label={`${dateLabel}の${student.attendanceNumber}番（${item.type.name}）を未採点に戻す`}
             onClick={() => onClear(submission.id)}
             className="text-ai min-h-11 px-3 font-bold underline"
           >

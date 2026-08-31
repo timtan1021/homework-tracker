@@ -6,8 +6,10 @@ import { renderAsTeacher } from "../test/router";
 import { createCohort } from "../db/cohorts";
 import { addStudent } from "../db/students";
 import { addSubmissionType } from "../db/submissionTypes";
+import { addDateSubmission } from "../db/dateSubmissions";
 import { recordSubmission } from "../db/submissions";
 import * as gradingModule from "../db/grading";
+import { toDateKey } from "../lib/date";
 
 useFreshDb();
 
@@ -39,7 +41,7 @@ describe("採点画面", () => {
 
     expect(await screen.findByText("計算ドリル")).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "8月24日(月)の5番を合格にする" }),
+      screen.getByRole("button", { name: "8月24日(月)の5番（計算ドリル）を合格にする" }),
     ).toBeInTheDocument();
   });
 
@@ -58,7 +60,7 @@ describe("採点画面", () => {
 
     await user.click(
       await screen.findByRole("button", {
-        name: "8月24日(月)の5番を合格にする",
+        name: "8月24日(月)の5番（計算ドリル）を合格にする",
       }),
     );
 
@@ -75,14 +77,14 @@ describe("採点画面", () => {
 
     await user.click(
       await screen.findByRole("button", {
-        name: "8月24日(月)の5番を再提出にする",
+        name: "8月24日(月)の5番（計算ドリル）を再提出にする",
       }),
     );
 
     await screen.findByText("未採点の提出物はありません");
     expect(
       screen.getByRole("button", {
-        name: "8月24日(月)の5番を未採点に戻す",
+        name: "8月24日(月)の5番（計算ドリル）を未採点に戻す",
       }),
     ).toBeInTheDocument();
   });
@@ -93,16 +95,16 @@ describe("採点画面", () => {
 
     await user.click(
       await screen.findByRole("button", {
-        name: "8月24日(月)の5番を再提出にする",
+        name: "8月24日(月)の5番（計算ドリル）を再提出にする",
       }),
     );
     await screen.findByRole("button", {
-      name: "8月24日(月)の5番を未採点に戻す",
+      name: "8月24日(月)の5番（計算ドリル）を未採点に戻す",
     });
 
     await user.click(
       screen.getByRole("button", {
-        name: "8月24日(月)の5番を未採点に戻す",
+        name: "8月24日(月)の5番（計算ドリル）を未採点に戻す",
       }),
     );
 
@@ -112,7 +114,7 @@ describe("採点画面", () => {
       ).toBeInTheDocument();
     });
     expect(
-      screen.getByRole("button", { name: "8月24日(月)の5番を合格にする" }),
+      screen.getByRole("button", { name: "8月24日(月)の5番（計算ドリル）を合格にする" }),
     ).toBeInTheDocument();
   });
 
@@ -122,15 +124,15 @@ describe("採点画面", () => {
 
     await user.click(
       await screen.findByRole("button", {
-        name: "8月24日(月)の5番を再提出にする",
+        name: "8月24日(月)の5番（計算ドリル）を再提出にする",
       }),
     );
     await screen.findByRole("button", {
-      name: "8月24日(月)の5番を未採点に戻す",
+      name: "8月24日(月)の5番（計算ドリル）を未採点に戻す",
     });
 
     await user.click(
-      screen.getByRole("button", { name: "8月24日(月)の5番を合格にする" }),
+      screen.getByRole("button", { name: "8月24日(月)の5番（計算ドリル）を合格にする" }),
     );
 
     await waitFor(() => {
@@ -150,7 +152,7 @@ describe("採点画面", () => {
 
     await user.click(
       await screen.findByRole("button", {
-        name: "8月24日(月)の5番を合格にする",
+        name: "8月24日(月)の5番（計算ドリル）を合格にする",
       }),
     );
 
@@ -159,5 +161,55 @@ describe("採点画面", () => {
     ).toBeInTheDocument();
 
     spy.mockRestore();
+  });
+
+  it("同じ日付・同じ表示順の日付指定提出物が複数あっても見出しが分裂しない", async () => {
+    // 日付指定の提出物(addDateSubmission)はorderが常に0のため、
+    // 同日締切の2件が並ぶと表示順→日付のタイブレークが両方とも同点になり、
+    // 出席番号だけで最終順位が決まる。生徒側の出席番号が交互だと
+    // 提出物の項目が配列上で入り交じり、見出しが分裂する不具合を再現する。
+    const today = toDateKey(new Date());
+    const typeA = await addDateSubmission({
+      cohortId,
+      name: "遠足のしおり",
+      date: today,
+      deadline: "08:15",
+    });
+    const typeB = await addDateSubmission({
+      cohortId,
+      name: "校外学習の同意書",
+      date: today,
+      deadline: "08:15",
+    });
+
+    const student1 = await addStudent({ cohortId, attendanceNumber: 1 });
+    const student2 = await addStudent({ cohortId, attendanceNumber: 2 });
+    const student3 = await addStudent({ cohortId, attendanceNumber: 3 });
+
+    await recordSubmission({
+      cohortId,
+      studentId: student1.id,
+      submissionTypeIds: [typeA.id],
+      date: today,
+    });
+    await recordSubmission({
+      cohortId,
+      studentId: student2.id,
+      submissionTypeIds: [typeB.id],
+      date: today,
+    });
+    await recordSubmission({
+      cohortId,
+      studentId: student3.id,
+      submissionTypeIds: [typeA.id],
+      date: today,
+    });
+
+    renderAsTeacher("/grading");
+
+    await screen.findByText("計算ドリル");
+
+    expect(await screen.findAllByText("遠足のしおり")).toHaveLength(1);
+    expect(await screen.findAllByText("校外学習の同意書")).toHaveLength(1);
   });
 });
