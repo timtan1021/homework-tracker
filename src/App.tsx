@@ -3,6 +3,7 @@ import { SetupGate } from "./components/SetupGate";
 import { TeacherAuthProvider } from "./components/TeacherAuthProvider";
 import { TeacherGate } from "./components/TeacherGate";
 import { Calendar } from "./screens/Calendar";
+import { Grading } from "./screens/Grading";
 import { KidsScan } from "./screens/KidsScan";
 import { Print } from "./screens/Print";
 import { Roster } from "./screens/Roster";
@@ -56,6 +57,7 @@ export function AppRoutes() {
         <Route path="/submissions/:id/edit" element={<SubmissionEdit />} />
         <Route path="/unsubmitted" element={<Unsubmitted />} />
         <Route path="/calendar" element={<Calendar />} />
+        <Route path="/grading" element={<Grading />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

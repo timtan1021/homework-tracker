@@ -171,4 +171,12 @@ describe("下部のボタン", () => {
       await screen.findByRole("link", { name: "宿題をカレンダーで登録" }),
     ).toHaveAttribute("href", "/calendar");
   });
+
+  it("採点画面への導線がある", async () => {
+    renderRoster();
+
+    expect(
+      await screen.findByRole("link", { name: "採点する" }),
+    ).toHaveAttribute("href", "/grading");
+  });
 });

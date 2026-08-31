@@ -94,6 +94,12 @@ function RosterBody() {
         >
           宿題をカレンダーで登録
         </Link>
+        <Link
+          to="/grading"
+          className="border-ai text-ai rounded border-2 px-4 py-3 text-center font-bold"
+        >
+          採点する
+        </Link>
       </nav>
     </main>
   );
