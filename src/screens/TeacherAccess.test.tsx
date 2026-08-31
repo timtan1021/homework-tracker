@@ -30,6 +30,19 @@ async function signIn(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole("button", { name: "入る" }));
 }
 
+describe("パスワード画面からの誤操作の復帰", () => {
+  it("パスワードを入れず、こどもがめんへ で児童画面に戻れる", async () => {
+    const user = userEvent.setup();
+    renderApp();
+
+    await user.click(
+      await screen.findByRole("button", { name: "← こどもがめんへ" }),
+    );
+
+    expect(await screen.findByRole("link", { name: "せんせい" })).toBeInTheDocument();
+  });
+});
+
 describe("児童画面に戻ったあと", () => {
   it("もう一度名簿を開くとパスワードを求められる", async () => {
     const user = userEvent.setup();

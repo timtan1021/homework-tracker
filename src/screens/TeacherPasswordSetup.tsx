@@ -8,7 +8,13 @@ import { setTeacherPassword } from "../db/teacherAuth";
  *
  * 打ち間違えたまま鍵を掛けると合言葉でしか戻れないため、2回入力させる。
  */
-export function TeacherPasswordSetup({ onDone }: { onDone: () => void }) {
+export function TeacherPasswordSetup({
+  onDone,
+  onExit,
+}: {
+  onDone: () => void;
+  onExit: () => void;
+}) {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -44,7 +50,15 @@ export function TeacherPasswordSetup({ onDone }: { onDone: () => void }) {
 
   return (
     <main className="mx-auto max-w-md p-4">
-      <h1 className="font-display text-ai text-2xl">
+      <button
+        type="button"
+        onClick={onExit}
+        className="text-sumi min-h-11 px-2 font-bold"
+      >
+        ← こどもがめんへ
+      </button>
+
+      <h1 className="font-display text-ai mt-4 text-2xl">
         先生用のパスワードを決めてください
       </h1>
 

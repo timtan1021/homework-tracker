@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useNavigate } from "react-router";
 import { isTeacherPasswordSet } from "../db/teacherAuth";
 import { useAsync } from "../hooks/useAsync";
 import { TeacherLogin } from "../screens/TeacherLogin";
@@ -15,6 +16,8 @@ import { useTeacherAuth } from "./TeacherAuthProvider";
 export function TeacherGate({ children }: { children: ReactNode }) {
   const { authenticated, signIn } = useTeacherAuth();
   const state = useAsync(() => isTeacherPasswordSet(), "teacher-password-set");
+  const navigate = useNavigate();
+  const exitToKids = () => navigate("/");
 
   // セキュアコンテキストでなければ crypto.subtle が存在しない。
   // 児童画面のカメラも同じ制約で動かないため、条件は一致している。
@@ -43,8 +46,8 @@ export function TeacherGate({ children }: { children: ReactNode }) {
   }
 
   return state.data ? (
-    <TeacherLogin onSuccess={signIn} />
+    <TeacherLogin onSuccess={signIn} onExit={exitToKids} />
   ) : (
-    <TeacherPasswordSetup onDone={signIn} />
+    <TeacherPasswordSetup onDone={signIn} onExit={exitToKids} />
   );
 }

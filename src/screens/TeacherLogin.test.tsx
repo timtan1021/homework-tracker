@@ -17,7 +17,7 @@ describe("パスワードで入る", () => {
   it("正しいパスワードで onSuccess を呼ぶ", async () => {
     const user = userEvent.setup();
     const onSuccess = vi.fn();
-    render(<TeacherLogin onSuccess={onSuccess} />);
+    render(<TeacherLogin onSuccess={onSuccess} onExit={() => {}} />);
 
     await user.type(screen.getByLabelText("パスワード"), "あさのかい");
     await user.click(screen.getByRole("button", { name: "入る" }));
@@ -30,7 +30,7 @@ describe("パスワードで入る", () => {
   it("違うパスワードでは onSuccess を呼ばない", async () => {
     const user = userEvent.setup();
     const onSuccess = vi.fn();
-    render(<TeacherLogin onSuccess={onSuccess} />);
+    render(<TeacherLogin onSuccess={onSuccess} onExit={() => {}} />);
 
     await user.type(screen.getByLabelText("パスワード"), "ちがう");
     await user.click(screen.getByRole("button", { name: "入る" }));
@@ -42,12 +42,22 @@ describe("パスワードで入る", () => {
   });
 
   it("入力欄はパスワードとして扱う", () => {
-    render(<TeacherLogin onSuccess={() => {}} />);
+    render(<TeacherLogin onSuccess={() => {}} onExit={() => {}} />);
 
     expect(screen.getByLabelText("パスワード")).toHaveAttribute(
       "type",
       "password",
     );
+  });
+
+  it("こどもがめんへ戻れる", async () => {
+    const user = userEvent.setup();
+    const onExit = vi.fn();
+    render(<TeacherLogin onSuccess={() => {}} onExit={onExit} />);
+
+    await user.click(screen.getByRole("button", { name: "← こどもがめんへ" }));
+
+    expect(onExit).toHaveBeenCalledOnce();
   });
 });
 
@@ -70,7 +80,7 @@ describe("合言葉で決め直す", () => {
 
   it("正しい合言葉で新しいパスワードに変わる", async () => {
     const user = userEvent.setup();
-    render(<TeacherLogin onSuccess={() => {}} />);
+    render(<TeacherLogin onSuccess={() => {}} onExit={() => {}} />);
 
     await openRecovery(user);
     await submitRecovery(user, passphrase, "あたらしい");
@@ -84,7 +94,7 @@ describe("合言葉で決め直す", () => {
   it("新しい合言葉を控えてから onSuccess を呼ぶ", async () => {
     const user = userEvent.setup();
     const onSuccess = vi.fn();
-    render(<TeacherLogin onSuccess={onSuccess} />);
+    render(<TeacherLogin onSuccess={onSuccess} onExit={() => {}} />);
 
     await openRecovery(user);
     await submitRecovery(user, passphrase, "あたらしい");
@@ -100,7 +110,7 @@ describe("合言葉で決め直す", () => {
 
   it("違う合言葉では変わらない", async () => {
     const user = userEvent.setup();
-    render(<TeacherLogin onSuccess={() => {}} />);
+    render(<TeacherLogin onSuccess={() => {}} onExit={() => {}} />);
 
     await openRecovery(user);
     await submitRecovery(user, "あめ-そら-ほし-つき", "あたらしい");
@@ -115,7 +125,7 @@ describe("合言葉で決め直す", () => {
 
   it("新しいパスワードが4文字未満なら断る", async () => {
     const user = userEvent.setup();
-    render(<TeacherLogin onSuccess={() => {}} />);
+    render(<TeacherLogin onSuccess={() => {}} onExit={() => {}} />);
 
     await openRecovery(user);
     await submitRecovery(user, passphrase, "abc");
@@ -128,11 +138,25 @@ describe("合言葉で決め直す", () => {
 
   it("パスワード入力に戻れる", async () => {
     const user = userEvent.setup();
-    render(<TeacherLogin onSuccess={() => {}} />);
+    render(<TeacherLogin onSuccess={() => {}} onExit={() => {}} />);
 
     await openRecovery(user);
     await user.click(screen.getByRole("button", { name: "やめる" }));
 
     expect(screen.getByLabelText("パスワード")).toBeInTheDocument();
+  });
+
+  // 合言葉は一度しか出ない。ここに離脱口があると控える前に消せてしまう。
+  it("合言葉の控え画面には こどもがめんへ を出さない", async () => {
+    const user = userEvent.setup();
+    render(<TeacherLogin onSuccess={() => {}} onExit={() => {}} />);
+
+    await openRecovery(user);
+    await submitRecovery(user, passphrase, "あたらしい");
+    await screen.findByText("合言葉を控えてください");
+
+    expect(
+      screen.queryByRole("button", { name: "← こどもがめんへ" }),
+    ).not.toBeInTheDocument();
   });
 });

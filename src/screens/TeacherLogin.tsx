@@ -10,7 +10,13 @@ import {
  * 誤入力回数によるロックアウトは入れない。PBKDF2 の反復が総当たりを
  * 遅くしており、鍵を掛けた先生自身が締め出される害のほうが大きい。
  */
-export function TeacherLogin({ onSuccess }: { onSuccess: () => void }) {
+export function TeacherLogin({
+  onSuccess,
+  onExit,
+}: {
+  onSuccess: () => void;
+  onExit: () => void;
+}) {
   const [mode, setMode] = useState<"password" | "recovery">("password");
   const [password, setPassword] = useState("");
   const [phrase, setPhrase] = useState("");
@@ -60,7 +66,15 @@ export function TeacherLogin({ onSuccess }: { onSuccess: () => void }) {
   if (mode === "recovery") {
     return (
       <main className="mx-auto max-w-md p-4">
-        <h1 className="font-display text-ai text-2xl">
+        <button
+          type="button"
+          onClick={onExit}
+          className="text-sumi min-h-11 px-2 font-bold"
+        >
+          ← こどもがめんへ
+        </button>
+
+        <h1 className="font-display text-ai mt-4 text-2xl">
           合言葉でパスワードを決め直す
         </h1>
 
@@ -121,7 +135,15 @@ export function TeacherLogin({ onSuccess }: { onSuccess: () => void }) {
 
   return (
     <main className="mx-auto max-w-md p-4">
-      <h1 className="font-display text-ai text-2xl">先生用</h1>
+      <button
+        type="button"
+        onClick={onExit}
+        className="text-sumi min-h-11 px-2 font-bold"
+      >
+        ← こどもがめんへ
+      </button>
+
+      <h1 className="font-display text-ai mt-4 text-2xl">先生用</h1>
 
       <form onSubmit={(event) => void signIn(event)} className="mt-6">
         <label className="flex flex-col gap-1">

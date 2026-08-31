@@ -20,7 +20,7 @@ async function fillAndSubmit(
 describe("TeacherPasswordSetup", () => {
   it("パスワードを設定すると合言葉が出る", async () => {
     const user = userEvent.setup();
-    render(<TeacherPasswordSetup onDone={() => {}} />);
+    render(<TeacherPasswordSetup onDone={() => {}} onExit={() => {}} />);
 
     await fillAndSubmit(user, "あさのかい", "あさのかい");
 
@@ -31,7 +31,7 @@ describe("TeacherPasswordSetup", () => {
 
   it("設定したパスワードで通るようになる", async () => {
     const user = userEvent.setup();
-    render(<TeacherPasswordSetup onDone={() => {}} />);
+    render(<TeacherPasswordSetup onDone={() => {}} onExit={() => {}} />);
 
     await fillAndSubmit(user, "あさのかい", "あさのかい");
     await screen.findByText("合言葉を控えてください");
@@ -42,7 +42,7 @@ describe("TeacherPasswordSetup", () => {
   it("合言葉を控えてから onDone を呼ぶ", async () => {
     const user = userEvent.setup();
     const onDone = vi.fn();
-    render(<TeacherPasswordSetup onDone={onDone} />);
+    render(<TeacherPasswordSetup onDone={onDone} onExit={() => {}} />);
 
     await fillAndSubmit(user, "あさのかい", "あさのかい");
     await screen.findByText("合言葉を控えてください");
@@ -55,7 +55,7 @@ describe("TeacherPasswordSetup", () => {
 
   it("2回の入力が違うと保存しない", async () => {
     const user = userEvent.setup();
-    render(<TeacherPasswordSetup onDone={() => {}} />);
+    render(<TeacherPasswordSetup onDone={() => {}} onExit={() => {}} />);
 
     await fillAndSubmit(user, "あさのかい", "あさのかー");
 
@@ -67,7 +67,7 @@ describe("TeacherPasswordSetup", () => {
 
   it("4文字未満は保存しない", async () => {
     const user = userEvent.setup();
-    render(<TeacherPasswordSetup onDone={() => {}} />);
+    render(<TeacherPasswordSetup onDone={() => {}} onExit={() => {}} />);
 
     await fillAndSubmit(user, "abc", "abc");
 
@@ -78,7 +78,7 @@ describe("TeacherPasswordSetup", () => {
   });
 
   it("入力欄はパスワードとして扱う", async () => {
-    render(<TeacherPasswordSetup onDone={() => {}} />);
+    render(<TeacherPasswordSetup onDone={() => {}} onExit={() => {}} />);
 
     expect(screen.getByLabelText("パスワード")).toHaveAttribute(
       "type",
@@ -90,9 +90,34 @@ describe("TeacherPasswordSetup", () => {
     );
   });
 
+  it("こどもがめんへ戻れる", async () => {
+    const user = userEvent.setup();
+    const onExit = vi.fn();
+    render(<TeacherPasswordSetup onDone={() => {}} onExit={onExit} />);
+
+    await user.click(
+      screen.getByRole("button", { name: "← こどもがめんへ" }),
+    );
+
+    expect(onExit).toHaveBeenCalledOnce();
+  });
+
+  // 合言葉は一度しか出ない。ここに離脱口があると控える前に消せてしまう。
+  it("合言葉の控え画面には こどもがめんへ を出さない", async () => {
+    const user = userEvent.setup();
+    render(<TeacherPasswordSetup onDone={() => {}} onExit={() => {}} />);
+
+    await fillAndSubmit(user, "あさのかい", "あさのかい");
+    await screen.findByText("合言葉を控えてください");
+
+    expect(
+      screen.queryByRole("button", { name: "← こどもがめんへ" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("保存中は二重に押せない", async () => {
     const user = userEvent.setup();
-    render(<TeacherPasswordSetup onDone={() => {}} />);
+    render(<TeacherPasswordSetup onDone={() => {}} onExit={() => {}} />);
 
     await user.type(screen.getByLabelText("パスワード"), "あさのかい");
     await user.type(

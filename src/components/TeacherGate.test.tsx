@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { useFreshDb } from "../test/db";
 import { setTeacherPassword } from "../db/teacherAuth";
@@ -14,11 +15,13 @@ afterEach(() => {
 
 function renderGate() {
   return render(
-    <TeacherAuthProvider>
-      <TeacherGate>
-        <p>名簿の中身</p>
-      </TeacherGate>
-    </TeacherAuthProvider>,
+    <MemoryRouter initialEntries={["/roster"]}>
+      <TeacherAuthProvider>
+        <TeacherGate>
+          <p>名簿の中身</p>
+        </TeacherGate>
+      </TeacherAuthProvider>
+    </MemoryRouter>,
   );
 }
 
