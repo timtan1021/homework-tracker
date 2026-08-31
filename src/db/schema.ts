@@ -54,6 +54,8 @@ export type Submission = {
   submittedAt: number;
   /** 無ければ "submitted" 扱い（既存レコードとの後方互換）。DB_VERSIONは上げない。 */
   status?: "submitted" | "absent";
+  /** 採点結果。未定義なら未採点。欠席の記録には付けない。 */
+  grade?: "passed" | "resubmit";
 };
 
 export interface HomeworkDB extends DBSchema {
