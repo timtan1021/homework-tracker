@@ -15,7 +15,7 @@ async function listGradableSubmissions(cohortId: string): Promise<Submission[]> 
   const all = await db.getAllFromIndex(
     "submissions",
     "by-cohort-date",
-    IDBKeyRange.bound([cohortId, ""], [cohortId, "￿"]),
+    IDBKeyRange.bound([cohortId, ""], [cohortId, "\uffff"]),
   );
   return all.filter((submission) => submission.status !== "absent");
 }
