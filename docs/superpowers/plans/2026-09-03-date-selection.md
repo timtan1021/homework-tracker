@@ -841,7 +841,7 @@ export async function clearGrade(id: string): Promise<void> {
 - [ ] **Step 4: テストが通ることを確認する**
 
 Run: `npx vitest run src/db/grading.test.ts`
-Expected: PASS（全13件）
+Expected: PASS（全14件）
 
 - [ ] **Step 5: わざと壊して確認する**
 
@@ -1281,7 +1281,7 @@ export function Grading() {
 - [ ] **Step 4: テストが通ることを確認する**
 
 Run: `npx vitest run src/screens/Grading.test.tsx`
-Expected: PASS（既存11件 + 新規4件）
+Expected: PASS（既存8件 + 新規4件）
 
 - [ ] **Step 5: コミット**
 
@@ -1780,7 +1780,7 @@ export function Scan() {
 - [ ] **Step 4: テストが通ることを確認する**
 
 Run: `npx vitest run src/screens/Scan.test.tsx`
-Expected: PASS（既存17件 + 新規7件）
+Expected: PASS（既存16件 + 新規7件）
 
 - [ ] **Step 5: コミット**
 
@@ -2168,7 +2168,7 @@ export function KidsScan() {
 - [ ] **Step 4: テストが通ることを確認する**
 
 Run: `npx vitest run src/screens/KidsScan.test.tsx`
-Expected: PASS（既存21件 + 新規7件）
+Expected: PASS（既存17件 + 新規7件）
 
 - [ ] **Step 5: わざと壊して確認する**
 
