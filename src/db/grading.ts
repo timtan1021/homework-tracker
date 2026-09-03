@@ -1,3 +1,4 @@
+import { toDateKey } from "../lib/date";
 import { getDb } from "./schema";
 import type { Student, Submission, SubmissionType } from "./schema";
 import { listStudents } from "./students";
@@ -31,10 +32,23 @@ function compareGradingItems(a: GradingItem, b: GradingItem): number {
 /**
  * 未採点・再提出待ちの提出記録を、提出物の表示順→日付→出席番号でまとめて返す。
  * 転出した生徒、削除済みの提出物に紐づく記録は含めない。
+ *
+ * 未採点(ungraded)は受け取った日(submittedAtをローカルで日付に切ったもの)で
+ * receivedDate に絞る。提出日ではなく受け取った日で絞るのは、採点が
+ * 「今日手元にあるドリルを見る」作業だから(過去の提出日で遅れて提出された
+ * ものも、受け取った今日の欄に出す)。
+ *
+ * 再提出待ち(resubmitPending)は絞らない。日をまたいで追いかけるものなので、
+ * 絞ると見失う。
  */
-export async function listGradingItems(cohortId: string): Promise<{
+export async function listGradingItems(
+  cohortId: string,
+  receivedDate: string,
+): Promise<{
   ungraded: GradingItem[];
   resubmitPending: GradingItem[];
+  otherDaysUngradedCount: number;
+  oldestUngradedDate: string | null;
 }> {
   const [submissions, students, types] = await Promise.all([
     listGradableSubmissions(cohortId),
@@ -58,11 +72,34 @@ export async function listGradingItems(cohortId: string): Promise<{
   }
   items.sort(compareGradingItems);
 
+  const allUngraded = items.filter((item) => item.submission.grade === undefined);
+
+  const ungradedByReceivedDate = new Map<string, GradingItem[]>();
+  for (const item of allUngraded) {
+    const received = toDateKey(new Date(item.submission.submittedAt));
+    const bucket = ungradedByReceivedDate.get(received);
+    if (bucket !== undefined) {
+      bucket.push(item);
+    } else {
+      ungradedByReceivedDate.set(received, [item]);
+    }
+  }
+
+  const otherReceivedDates = [...ungradedByReceivedDate.keys()]
+    .filter((received) => received !== receivedDate)
+    .sort();
+
   return {
-    ungraded: items.filter((item) => item.submission.grade === undefined),
+    ungraded: ungradedByReceivedDate.get(receivedDate) ?? [],
     resubmitPending: items.filter(
       (item) => item.submission.grade === "resubmit",
     ),
+    otherDaysUngradedCount: otherReceivedDates.reduce(
+      (total, received) =>
+        total + (ungradedByReceivedDate.get(received)?.length ?? 0),
+      0,
+    ),
+    oldestUngradedDate: otherReceivedDates[0] ?? null,
   };
 }
 
