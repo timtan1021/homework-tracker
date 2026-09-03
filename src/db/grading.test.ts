@@ -175,17 +175,24 @@ describe("listGradingItems", () => {
     ]);
   });
 
-  it("他の日に未採点があれば件数と一番古い受け取り日を返す", async () => {
+  it("他の日に未採点があれば件数と一番古い受け取り日を返す。並びは受け取った日で決まる(提出日ではない)", async () => {
     const oneDayAgo = new Date(Date.now() - 1 * 24 * 60 * 60 * 1000);
     const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
-    await putUngraded(toDateKey(oneDayAgo), oneDayAgo.getTime());
-    await putUngraded(toDateKey(twoDaysAgo), twoDaysAgo.getTime());
+    const oneDayAgoKey = toDateKey(oneDayAgo);
+    const twoDaysAgoKey = toDateKey(twoDaysAgo);
+
+    // 提出日と受け取った日の前後関係をわざと逆にする。提出日の昇順で
+    // 処理すると一番古い受け取り日を取り違える(先に処理される方が
+    // 受け取りは新しい)。これで.sort()の必要性と「並びは受け取った日で
+    // 決まる」ことを検証できる。
+    await putUngraded(twoDaysAgoKey, oneDayAgo.getTime()); // 提出日は古いが受け取りは新しい
+    await putUngraded(oneDayAgoKey, twoDaysAgo.getTime()); // 提出日は新しいが受け取りは古い
 
     const { otherDaysUngradedCount, oldestUngradedDate } =
       await listGradingItems(cohortId, TODAY);
 
     expect(otherDaysUngradedCount).toBe(2);
-    expect(oldestUngradedDate).toBe(toDateKey(twoDaysAgo));
+    expect(oldestUngradedDate).toBe(twoDaysAgoKey);
   });
 
   it("他の日に未採点が無ければ件数は0、一番古い日はnull", async () => {
