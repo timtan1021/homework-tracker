@@ -7,7 +7,7 @@ import { createCohort } from "../db/cohorts";
 import { addStudent } from "../db/students";
 import { addSubmissionType } from "../db/submissionTypes";
 import { listSubmissions } from "../db/submissions";
-import { toDateKey } from "../lib/date";
+import { formatDateHeading, toDateKey } from "../lib/date";
 import { buildQrPayload } from "../lib/qr";
 import { KidsScan } from "./KidsScan";
 
@@ -324,5 +324,116 @@ describe("カメラが使えないとき", () => {
       await screen.findByText("せんせいを よんでください"),
     ).toBeInTheDocument();
     expect(screen.queryByText(/番号でチェック/)).not.toBeInTheDocument();
+  });
+});
+
+describe("日付を送る", () => {
+  const TOMORROW = new Date(TODAY);
+  TOMORROW.setDate(TOMORROW.getDate() + 1);
+  const TOMORROW_WEEKDAY = TOMORROW.getDay();
+
+  it("あしたのぶんへ送ると見出しが変わる", async () => {
+    const user = userEvent.setup();
+    await addType("かんじドリル", [TODAY_WEEKDAY, TOMORROW_WEEKDAY]);
+    renderKids();
+
+    await screen.findByText(formatDateHeading(TODAY));
+    await user.click(
+      await screen.findByRole("button", { name: "あしたのぶん →" }),
+    );
+
+    expect(
+      await screen.findByText(formatDateHeading(TOMORROW)),
+    ).toBeInTheDocument();
+  });
+
+  it("きょうより前へは戻れない", async () => {
+    await addType("かんじドリル");
+    renderKids();
+
+    await screen.findByText(formatDateHeading(TODAY));
+    expect(screen.queryByRole("button", { name: "← まえのひ" })).toBeNull();
+  });
+
+  it("あしたの次へは進めない", async () => {
+    const user = userEvent.setup();
+    await addType("かんじドリル", [TODAY_WEEKDAY, TOMORROW_WEEKDAY]);
+    renderKids();
+
+    await user.click(
+      await screen.findByRole("button", { name: "あしたのぶん →" }),
+    );
+    await screen.findByText(formatDateHeading(TOMORROW));
+
+    expect(
+      screen.queryByRole("button", { name: "あしたのぶん →" }),
+    ).toBeNull();
+  });
+
+  it("あしたのぶんへ送ると選択が空のまま", async () => {
+    const user = userEvent.setup();
+    await addType("かんじドリル", [TODAY_WEEKDAY, TOMORROW_WEEKDAY]);
+    renderKids();
+
+    await user.click(
+      await screen.findByRole("button", { name: /かんじドリル/ }),
+    );
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: /かんじドリル/ }),
+      ).toHaveAttribute("aria-pressed", "true");
+    });
+
+    await user.click(screen.getByRole("button", { name: "あしたのぶん →" }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: /かんじドリル/ }),
+      ).toHaveAttribute("aria-pressed", "false");
+    });
+  });
+
+  it("あしたを見ているときはヘッダーが反転する", async () => {
+    const user = userEvent.setup();
+    await addType("かんじドリル", [TODAY_WEEKDAY, TOMORROW_WEEKDAY]);
+    renderKids();
+
+    await user.click(
+      await screen.findByRole("button", { name: "あしたのぶん →" }),
+    );
+
+    const heading = await screen.findByText(formatDateHeading(TOMORROW));
+    expect(heading).toHaveClass("text-gayoshi");
+  });
+
+  it("あしたに出すものが無ければその旨を伝える", async () => {
+    const user = userEvent.setup();
+    await addType("かんじドリル", [TODAY_WEEKDAY]); // 今日だけ
+    renderKids();
+
+    await screen.findByRole("button", { name: /かんじドリル/ });
+    await user.click(screen.getByRole("button", { name: "あしたのぶん →" }));
+
+    expect(
+      await screen.findByText("あしたは だすものが ありません"),
+    ).toBeInTheDocument();
+  });
+
+  it("きょうにもどるボタンで今日に戻れる", async () => {
+    const user = userEvent.setup();
+    await addType("かんじドリル", [TODAY_WEEKDAY, TOMORROW_WEEKDAY]);
+    renderKids();
+
+    await user.click(
+      await screen.findByRole("button", { name: "あしたのぶん →" }),
+    );
+    await screen.findByText(formatDateHeading(TOMORROW));
+
+    await user.click(
+      screen.getByRole("button", { name: "← きょうにもどる" }),
+    );
+
+    const heading = await screen.findByText(formatDateHeading(TODAY));
+    expect(heading).toHaveClass("text-ai");
   });
 });
