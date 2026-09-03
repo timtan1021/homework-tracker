@@ -8,8 +8,9 @@ import { addStudent } from "../db/students";
 import { addSubmissionType } from "../db/submissionTypes";
 import { addDateSubmission } from "../db/dateSubmissions";
 import { recordSubmission } from "../db/submissions";
+import { getDb } from "../db/schema";
 import * as gradingModule from "../db/grading";
-import { toDateKey } from "../lib/date";
+import { formatDateHeading, toDateKey } from "../lib/date";
 
 useFreshDb();
 
@@ -211,5 +212,103 @@ describe("採点画面", () => {
 
     expect(await screen.findAllByText("遠足のしおり")).toHaveLength(1);
     expect(await screen.findAllByText("校外学習の同意書")).toHaveLength(1);
+  });
+
+  it("既定で今日の日付を表示する", async () => {
+    renderAsTeacher("/grading");
+
+    expect(
+      await screen.findByText(formatDateHeading(new Date())),
+    ).toBeInTheDocument();
+  });
+
+  it("日付を送ると、その日に受け取った未採点だけに絞られる", async () => {
+    const user = userEvent.setup();
+    const otherType = await addSubmissionType({
+      cohortId,
+      name: "日記",
+      deadline: "08:15",
+      weekdays: [1, 2, 3, 4, 5],
+    });
+    const other = await addStudent({ cohortId, attendanceNumber: 9 });
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    const db = await getDb();
+    await db.put("submissions", {
+      id: "yesterday-submission",
+      cohortId,
+      studentId: other.id,
+      submissionTypeId: otherType.id,
+      date: toDateKey(yesterday),
+      submittedAt: yesterday.getTime(),
+      status: "submitted",
+    });
+
+    renderAsTeacher("/grading");
+
+    await screen.findByText("計算ドリル");
+    expect(screen.queryByText("日記")).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "← 前日" }));
+
+    await screen.findByText("日記");
+    expect(screen.queryByText("計算ドリル")).toBeNull();
+  });
+
+  it("再提出待ちは日付を送っても表示され続ける", async () => {
+    const user = userEvent.setup();
+    renderAsTeacher("/grading");
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: "8月24日(月)の5番（計算ドリル）を再提出にする",
+      }),
+    );
+    await screen.findByRole("button", {
+      name: "8月24日(月)の5番（計算ドリル）を未採点に戻す",
+    });
+
+    await user.click(screen.getByRole("button", { name: "← 前日" }));
+
+    expect(
+      await screen.findByRole("button", {
+        name: "8月24日(月)の5番（計算ドリル）を未採点に戻す",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("ほかの日に未採点があれば案内を出し、押すとその日へ移る", async () => {
+    const user = userEvent.setup();
+    const otherType = await addSubmissionType({
+      cohortId,
+      name: "日記",
+      deadline: "08:15",
+      weekdays: [1, 2, 3, 4, 5],
+    });
+    const other = await addStudent({ cohortId, attendanceNumber: 9 });
+    const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+
+    const db = await getDb();
+    await db.put("submissions", {
+      id: "two-days-ago-submission",
+      cohortId,
+      studentId: other.id,
+      submissionTypeId: otherType.id,
+      date: toDateKey(twoDaysAgo),
+      submittedAt: twoDaysAgo.getTime(),
+      status: "submitted",
+    });
+
+    renderAsTeacher("/grading");
+
+    const link = await screen.findByRole("button", {
+      name: "ほかの日に未採点 1件 → 一番古い日へ",
+    });
+    await user.click(link);
+
+    expect(await screen.findByText("日記")).toBeInTheDocument();
+    expect(
+      await screen.findByText(formatDateHeading(twoDaysAgo)),
+    ).toBeInTheDocument();
   });
 });

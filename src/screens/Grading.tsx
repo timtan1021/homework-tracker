@@ -1,12 +1,20 @@
 import { useState } from "react";
 import { Link } from "react-router";
 import { CohortGate, useActiveCohort } from "../components/CohortGate";
+import { DateStepper } from "../components/DateStepper";
 import { FullScreenMessage } from "../components/FullScreenMessage";
 import { clearGrade, gradeSubmission, type GradingItem } from "../db/grading";
 import { useGradingItems } from "../hooks/useGradingItems";
-import { dateFromKey, formatDateHeading } from "../lib/date";
+import {
+  dateFromKey,
+  formatDateHeading,
+  submissionTiming,
+  toDateKey,
+} from "../lib/date";
 
 type TypeGroup = { typeId: string; typeName: string; items: GradingItem[] };
+
+const DATE_LABELS = { prev: "← 前日", next: "翌日 →", backToToday: "今日へ" };
 
 /**
  * 提出物ごとにまとめる。日付指定の提出物はorderが常に0のため、同日締切の
@@ -45,11 +53,15 @@ function GradingRow({
   const { submission, student } = item;
   const dateLabel = formatDateHeading(dateFromKey(submission.date));
   const nameLabel = `${student.attendanceNumber}番${student.name}`;
+  const timing = submissionTiming(submission.date, submission.submittedAt);
+  const timingLabel =
+    timing === "late" ? "・遅れて提出" : timing === "early" ? "・先に提出" : "";
 
   return (
     <li className="border-kogan flex items-center justify-between gap-2 border-b py-2">
       <span className="font-num">
         {dateLabel} {nameLabel}
+        {timingLabel}
       </span>
       <div className="flex shrink-0 gap-2">
         <button
@@ -86,7 +98,9 @@ function GradingRow({
 
 function GradingBody() {
   const cohort = useActiveCohort();
-  const items = useGradingItems(cohort.id);
+  const [today] = useState(() => toDateKey(new Date()));
+  const [date, setDate] = useState(today);
+  const items = useGradingItems(cohort.id, date);
   const [error, setError] = useState<string | null>(null);
 
   if (items.status === "loading") {
@@ -94,6 +108,11 @@ function GradingBody() {
   }
   if (items.status === "error") {
     return <FullScreenMessage tone="error">{items.message}</FullScreenMessage>;
+  }
+
+  function changeDate(next: string): void {
+    setError(null);
+    setDate(next);
   }
 
   function grade(id: string, value: "passed" | "resubmit"): void {
@@ -124,15 +143,28 @@ function GradingBody() {
 
   const ungradedGroups = groupByType(items.data.ungraded);
   const resubmitGroups = groupByType(items.data.resubmitPending);
+  const oldestUngradedDate = items.data.oldestUngradedDate;
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-3xl flex-col gap-6 p-4">
       <header className="border-kogan flex items-center justify-between gap-3 border-b pb-3">
-        <h1 className="font-display text-ai text-2xl">採点</h1>
+        <div>
+          <h1 className="font-display text-ai text-2xl">採点</h1>
+          <p className="mt-1 text-sm font-bold">
+            {formatDateHeading(dateFromKey(date))}
+          </p>
+        </div>
         <Link to="/roster" className="text-ai shrink-0 p-2 font-bold underline">
           名簿へ
         </Link>
       </header>
+
+      <DateStepper
+        date={date}
+        today={today}
+        onChange={changeDate}
+        labels={DATE_LABELS}
+      />
 
       {error !== null && (
         <p role="alert" className="text-sm font-bold">
@@ -142,6 +174,17 @@ function GradingBody() {
 
       <section className="flex flex-col gap-5">
         <h2 className="font-display text-ai text-xl">未採点</h2>
+
+        {items.data.otherDaysUngradedCount > 0 && oldestUngradedDate !== null && (
+          <button
+            type="button"
+            onClick={() => changeDate(oldestUngradedDate)}
+            className="text-ai self-start font-bold underline"
+          >
+            ほかの日に未採点 {items.data.otherDaysUngradedCount}件 →
+            一番古い日へ
+          </button>
+        )}
 
         {ungradedGroups.length === 0 ? (
           <p>未採点の提出物はありません</p>
