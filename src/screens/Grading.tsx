@@ -179,7 +179,7 @@ function GradingBody() {
           <button
             type="button"
             onClick={() => changeDate(oldestUngradedDate)}
-            className="text-ai self-start font-bold underline"
+            className="text-ai min-h-11 self-start px-3 font-bold underline"
           >
             ほかの日に未採点 {items.data.otherDaysUngradedCount}件 →
             一番古い日へ

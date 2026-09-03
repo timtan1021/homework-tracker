@@ -311,4 +311,44 @@ describe("採点画面", () => {
       await screen.findByText(formatDateHeading(twoDaysAgo)),
     ).toBeInTheDocument();
   });
+
+  it("提出日より後に受け取った行は「遅れて提出」と表示する", async () => {
+    renderAsTeacher("/grading");
+
+    const row = (
+      await screen.findByRole("button", {
+        name: "8月24日(月)の5番（計算ドリル）を合格にする",
+      })
+    ).closest("li");
+    expect(row).not.toBeNull();
+    expect(row).toHaveTextContent("遅れて提出");
+  });
+
+  it("提出日より前に受け取った行は「先に提出」と表示する", async () => {
+    const early = await addStudent({ cohortId, attendanceNumber: 9 });
+    const type = await addSubmissionType({
+      cohortId,
+      name: "日記",
+      deadline: "08:15",
+      weekdays: [1, 2, 3, 4, 5],
+    });
+    const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const tomorrowKey = toDateKey(tomorrow);
+    await recordSubmission({
+      cohortId,
+      studentId: early.id,
+      submissionTypeIds: [type.id],
+      date: tomorrowKey,
+    });
+
+    renderAsTeacher("/grading");
+
+    const row = (
+      await screen.findByRole("button", {
+        name: `${formatDateHeading(tomorrow)}の9番（日記）を合格にする`,
+      })
+    ).closest("li");
+    expect(row).not.toBeNull();
+    expect(row).toHaveTextContent("先に提出");
+  });
 });
