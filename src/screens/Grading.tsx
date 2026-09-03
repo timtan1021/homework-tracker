@@ -48,7 +48,7 @@ function GradingRow({
 }: {
   item: GradingItem;
   onGrade: (id: string, grade: "passed" | "resubmit") => void;
-  onClear?: (id: string) => void;
+  onClear?: (item: GradingItem) => void;
 }) {
   const { submission, student } = item;
   const dateLabel = formatDateHeading(dateFromKey(submission.date));
@@ -85,7 +85,7 @@ function GradingRow({
           <button
             type="button"
             aria-label={`${dateLabel}の${student.attendanceNumber}番（${item.type.name}）を未採点に戻す`}
-            onClick={() => onClear(submission.id)}
+            onClick={() => onClear(item)}
             className="text-ai min-h-11 px-3 font-bold underline"
           >
             未採点に戻す
@@ -103,9 +103,6 @@ function GradingBody() {
   const items = useGradingItems(cohort.id, date);
   const [error, setError] = useState<string | null>(null);
 
-  if (items.status === "loading") {
-    return <FullScreenMessage>読み込んでいます</FullScreenMessage>;
-  }
   if (items.status === "error") {
     return <FullScreenMessage tone="error">{items.message}</FullScreenMessage>;
   }
@@ -128,10 +125,17 @@ function GradingBody() {
       });
   }
 
-  function clear(id: string): void {
+  function clear(item: GradingItem): void {
     setError(null);
-    void clearGrade(id)
-      .then(() => items.reload())
+    void clearGrade(item.submission.id)
+      .then(() => {
+        const receivedDate = toDateKey(new Date(item.submission.submittedAt));
+        if (receivedDate === date) {
+          items.reload();
+        } else {
+          changeDate(receivedDate);
+        }
+      })
       .catch((cause: unknown) => {
         setError(
           cause instanceof Error
@@ -141,9 +145,22 @@ function GradingBody() {
       });
   }
 
-  const ungradedGroups = groupByType(items.data.ungraded);
-  const resubmitGroups = groupByType(items.data.resubmitPending);
-  const oldestUngradedDate = items.data.oldestUngradedDate;
+  // 再読み込み中は前回の一覧が無いので空として扱う。日付を送るたびに
+  // 全画面の読み込み表示に戻すと、ヘッダーとDateStepperごと消えて
+  // 押した直後の位置が分からなくなる(Scan.tsx の submissions と同じ理由)。
+  const data =
+    items.status === "ready"
+      ? items.data
+      : {
+          ungraded: [],
+          resubmitPending: [],
+          otherDaysUngradedCount: 0,
+          oldestUngradedDate: null,
+        };
+
+  const ungradedGroups = groupByType(data.ungraded);
+  const resubmitGroups = groupByType(data.resubmitPending);
+  const oldestUngradedDate = data.oldestUngradedDate;
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-3xl flex-col gap-6 p-4">
@@ -175,13 +192,13 @@ function GradingBody() {
       <section className="flex flex-col gap-5">
         <h2 className="font-display text-ai text-xl">未採点</h2>
 
-        {items.data.otherDaysUngradedCount > 0 && oldestUngradedDate !== null && (
+        {data.otherDaysUngradedCount > 0 && oldestUngradedDate !== null && (
           <button
             type="button"
             onClick={() => changeDate(oldestUngradedDate)}
             className="text-ai min-h-11 self-start px-3 font-bold underline"
           >
-            ほかの日に未採点 {items.data.otherDaysUngradedCount}件 →
+            ほかの日に未採点 {data.otherDaysUngradedCount}件 →
             一番古い日へ
           </button>
         )}

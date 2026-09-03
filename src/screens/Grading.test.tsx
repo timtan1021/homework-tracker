@@ -82,12 +82,16 @@ describe("採点画面", () => {
       }),
     );
 
-    await screen.findByText("未採点の提出物はありません");
-    expect(
-      screen.getByRole("button", {
-        name: "8月24日(月)の5番（計算ドリル）を未採点に戻す",
-      }),
-    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.getByText("未採点の提出物はありません"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", {
+          name: "8月24日(月)の5番（計算ドリル）を未採点に戻す",
+        }),
+      ).toBeInTheDocument();
+    });
   });
 
   it("再提出待ちから未採点に戻せる", async () => {
@@ -113,10 +117,10 @@ describe("採点画面", () => {
       expect(
         screen.getByText("再提出待ちの生徒はいません"),
       ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "8月24日(月)の5番（計算ドリル）を合格にする" }),
+      ).toBeInTheDocument();
     });
-    expect(
-      screen.getByRole("button", { name: "8月24日(月)の5番（計算ドリル）を合格にする" }),
-    ).toBeInTheDocument();
   });
 
   it("再提出待ちから合格にできる", async () => {
@@ -350,5 +354,47 @@ describe("採点画面", () => {
     ).closest("li");
     expect(row).not.toBeNull();
     expect(row).toHaveTextContent("先に提出");
+  });
+
+  it("受け取った日が違う再提出待ちを未採点に戻すと、その受け取った日へ移る", async () => {
+    const user = userEvent.setup();
+    const otherType = await addSubmissionType({
+      cohortId,
+      name: "日記",
+      deadline: "08:15",
+      weekdays: [1, 2, 3, 4, 5],
+    });
+    const other = await addStudent({ cohortId, attendanceNumber: 9 });
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const yesterdayKey = toDateKey(yesterday);
+
+    const db = await getDb();
+    await db.put("submissions", {
+      id: "resubmit-yesterday",
+      cohortId,
+      studentId: other.id,
+      submissionTypeId: otherType.id,
+      date: yesterdayKey,
+      submittedAt: yesterday.getTime(),
+      status: "submitted",
+      grade: "resubmit",
+    });
+
+    renderAsTeacher("/grading");
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: `${formatDateHeading(yesterday)}の9番（日記）を未採点に戻す`,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(formatDateHeading(yesterday))).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", {
+          name: `${formatDateHeading(yesterday)}の9番（日記）を合格にする`,
+        }),
+      ).toBeInTheDocument();
+    });
   });
 });
