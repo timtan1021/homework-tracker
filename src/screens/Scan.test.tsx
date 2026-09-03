@@ -136,12 +136,12 @@ describe("提出物の選択", () => {
     await waitFor(() => expect(toggle).toHaveAttribute("aria-pressed", "false"));
   });
 
-  it("今日が提出日のものが無ければその旨を出す", async () => {
+  it("この日が提出日のものが無ければその旨を出す", async () => {
     await addType("日記", [OTHER_WEEKDAY]);
     renderScan();
 
     expect(
-      await screen.findByText("今日が提出日の宿題はありません"),
+      await screen.findByText("この日が提出日の宿題はありません"),
     ).toBeInTheDocument();
   });
 
@@ -265,5 +265,124 @@ describe("進捗", () => {
     await user.click(await screen.findByRole("button", { name: "1番" }));
 
     expect(await screen.findByText("計算ドリル 1人")).toBeInTheDocument();
+  });
+});
+
+describe("日付を送る", () => {
+  it("前日へ送ると見出しが変わる", async () => {
+    const user = userEvent.setup();
+    await addType("計算ドリル");
+    renderScan();
+
+    await screen.findByText(formatDateHeading(TODAY));
+    await user.click(screen.getByRole("button", { name: "← 前日" }));
+
+    expect(
+      await screen.findByText(formatDateHeading(YESTERDAY)),
+    ).toBeInTheDocument();
+  });
+
+  it("前日へ送ると、その日に記録される", async () => {
+    const user = userEvent.setup();
+    await addType("計算ドリル", [YESTERDAY.getDay()]);
+    await addStudent({ cohortId, attendanceNumber: 12 });
+    renderScan();
+
+    await screen.findByText(formatDateHeading(TODAY));
+    await user.click(screen.getByRole("button", { name: "← 前日" }));
+
+    await user.click(await screen.findByRole("button", { name: "12番" }));
+    await screen.findByText("提出しました");
+
+    expect(await listSubmissions(cohortId, YESTERDAY_KEY)).toHaveLength(1);
+    expect(await listSubmissions(cohortId, TODAY_KEY)).toHaveLength(0);
+  });
+
+  it("日付を送ると選択と直前の結果が消える", async () => {
+    const user = userEvent.setup();
+    await addType("計算ドリル", [TODAY_WEEKDAY, YESTERDAY.getDay()]);
+    await addStudent({ cohortId, attendanceNumber: 12 });
+    renderScan();
+
+    await user.click(await screen.findByRole("button", { name: "12番" }));
+    await screen.findByText("提出しました");
+
+    const toggle = await screen.findByRole("button", { name: /計算ドリル/ });
+    await user.click(toggle);
+    await waitFor(() =>
+      expect(toggle).toHaveAttribute("aria-pressed", "false"),
+    );
+
+    await user.click(screen.getByRole("button", { name: "← 前日" }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: /計算ドリル/ }),
+      ).toHaveAttribute("aria-pressed", "true");
+    });
+    expect(screen.queryByTestId("scan-result")).toBeEmptyDOMElement();
+  });
+
+  it("今日以外を見ているときはヘッダーが反転する", async () => {
+    const user = userEvent.setup();
+    await addType("計算ドリル", [TODAY_WEEKDAY, YESTERDAY.getDay()]);
+    renderScan();
+
+    const heading = await screen.findByText(formatDateHeading(TODAY));
+    expect(heading).toHaveClass("text-ai");
+
+    await user.click(screen.getByRole("button", { name: "← 前日" }));
+
+    const yesterdayHeading = await screen.findByText(
+      formatDateHeading(YESTERDAY),
+    );
+    expect(yesterdayHeading).toHaveClass("text-gayoshi");
+  });
+
+  it("今日へで戻ると元の見た目に戻る", async () => {
+    const user = userEvent.setup();
+    await addType("計算ドリル", [TODAY_WEEKDAY, YESTERDAY.getDay()]);
+    renderScan();
+
+    await screen.findByText(formatDateHeading(TODAY));
+    await user.click(screen.getByRole("button", { name: "← 前日" }));
+    await screen.findByText(formatDateHeading(YESTERDAY));
+
+    await user.click(screen.getByRole("button", { name: "今日へ" }));
+
+    const heading = await screen.findByText(formatDateHeading(TODAY));
+    expect(heading).toHaveClass("text-ai");
+  });
+
+  it("今日以外へ記録すると、結果に対象日が添えられる", async () => {
+    const user = userEvent.setup();
+    await addType("計算ドリル", [TODAY_WEEKDAY, YESTERDAY.getDay()]);
+    await addStudent({ cohortId, attendanceNumber: 12 });
+    renderScan();
+
+    // 読み込み完了(=ボタンの出現)を待ってからクリックする。renderScan直後は
+    // まだ「読み込んでいます」でボタンが存在しない。
+    await user.click(
+      await screen.findByRole("button", { name: "← 前日" }),
+    );
+    await user.click(await screen.findByRole("button", { name: "12番" }));
+
+    const result = await screen.findByTestId("scan-result");
+    expect(
+      within(result).getByText(`${formatDateHeading(YESTERDAY)}分`),
+    ).toBeInTheDocument();
+  });
+
+  it("今日を見ているときは対象日を添えない", async () => {
+    const user = userEvent.setup();
+    await addType("計算ドリル");
+    await addStudent({ cohortId, attendanceNumber: 12 });
+    renderScan();
+
+    await user.click(await screen.findByRole("button", { name: "12番" }));
+    await screen.findByText("提出しました");
+
+    const result = screen.getByTestId("scan-result");
+    expect(within(result).queryByText(/分$/)).toBeNull();
   });
 });

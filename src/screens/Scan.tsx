@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { CameraView } from "../components/CameraView";
 import { CohortGate, useActiveCohort } from "../components/CohortGate";
+import { DateStepper } from "../components/DateStepper";
 import { FullScreenMessage } from "../components/FullScreenMessage";
 import { NumberPad } from "../components/NumberPad";
 import { ScanResult } from "../components/ScanResult";
@@ -12,16 +13,19 @@ import { useStudents } from "../hooks/useStudents";
 import { useSubmissions } from "../hooks/useSubmissions";
 import { useQrCamera } from "../hooks/useQrCamera";
 import { useSubmissionTypes } from "../hooks/useSubmissionTypes";
-import { formatDateHeading, toDateKey } from "../lib/date";
+import { dateFromKey, formatDateHeading, toDateKey } from "../lib/date";
 import { parseQrPayload } from "../lib/qr";
+
+const DATE_LABELS = { prev: "← 前日", next: "翌日 →", backToToday: "今日へ" };
 
 function ScanBody() {
   const cohort = useActiveCohort();
 
-  // 画面を開いた時点の日付で固定する。日付をまたいで開きっぱなしに
-  // することは想定しない（朝の数分で使い切る画面のため）。
-  const [today] = useState(() => new Date());
-  const date = toDateKey(today);
+  // 画面を開いた時点の日付を今日として固定する。日付をまたいで開きっぱなしに
+  // することは想定しない（朝の数分で使い切る画面のため）。日付送りで見ている
+  // date はこれとは別に動く。
+  const [today] = useState(() => toDateKey(new Date()));
+  const [date, setDate] = useState(today);
 
   const students = useStudents(cohort.id);
   const types = useSubmissionTypes(cohort.id);
@@ -93,6 +97,16 @@ function ScanBody() {
     )
     .map((student) => student.id);
 
+  const isToday = date === today;
+
+  // 日付を送ったら選択と直前の結果を捨てる。持ち越すと、その日に
+  // 提出日が来ていない項目が選択されたまま記録されてしまう。
+  function changeDate(next: string): void {
+    setDate(next);
+    setSelectedIds(null);
+    setResult(null);
+  }
+
   function toggle(id: string): void {
     setSelectedIds(
       selected.includes(id)
@@ -131,14 +145,40 @@ function ScanBody() {
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-3xl flex-col gap-4 p-4">
-      <header className="border-kogan flex items-center justify-between gap-3 border-b pb-3">
-        <h1 className="font-display text-ai text-2xl">
-          {formatDateHeading(today)}
+      <header
+        className={
+          isToday
+            ? "border-kogan flex items-center justify-between gap-3 border-b pb-3"
+            : "bg-ai flex items-center justify-between gap-3 rounded p-3"
+        }
+      >
+        <h1
+          className={
+            isToday
+              ? "font-display text-ai text-2xl"
+              : "font-display text-gayoshi text-2xl"
+          }
+        >
+          {formatDateHeading(dateFromKey(date))}
         </h1>
-        <Link to="/roster" className="text-ai shrink-0 p-2 font-bold underline">
+        <Link
+          to="/roster"
+          className={
+            isToday
+              ? "text-ai shrink-0 p-2 font-bold underline"
+              : "text-gayoshi shrink-0 p-2 font-bold underline"
+          }
+        >
           名簿へ
         </Link>
       </header>
+
+      <DateStepper
+        date={date}
+        today={today}
+        onChange={changeDate}
+        labels={DATE_LABELS}
+      />
 
       {activeTypes.length === 0 ? (
         <div className="py-12 text-center">
@@ -151,7 +191,7 @@ function ScanBody() {
           </Link>
         </div>
       ) : todayTypes.length === 0 ? (
-        <p className="py-12 text-center">今日が提出日の宿題はありません</p>
+        <p className="py-12 text-center">この日が提出日の宿題はありません</p>
       ) : (
         <>
           <SubmissionToggleBar
@@ -160,7 +200,12 @@ function ScanBody() {
             onToggle={toggle}
           />
 
-          <ScanResult result={result} />
+          <ScanResult
+            result={result}
+            dateLabel={
+              isToday ? undefined : formatDateHeading(dateFromKey(date))
+            }
+          />
 
           {mode === "camera" ? (
             <CameraView

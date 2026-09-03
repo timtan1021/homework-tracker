@@ -2,7 +2,13 @@ import type { RecordResult } from "../db/submissions";
 import { Hanamaru } from "./Hanamaru";
 
 /** 直前のスキャン結果。何も読んでいなければ高さだけ確保する。 */
-export function ScanResult({ result }: { result: RecordResult | null }) {
+export function ScanResult({
+  result,
+  dateLabel,
+}: {
+  result: RecordResult | null;
+  dateLabel?: string;
+}) {
   if (result === null) {
     return <div data-testid="scan-result" className="min-h-28" />;
   }
@@ -35,6 +41,9 @@ export function ScanResult({ result }: { result: RecordResult | null }) {
       className="flex min-h-28 flex-col items-center justify-center gap-1"
     >
       {result.kind === "recorded" && <Hanamaru />}
+      {dateLabel !== undefined && (
+        <span className="font-bold">{dateLabel}分</span>
+      )}
       <span className="font-num text-3xl font-bold">{number}</span>
       <span className="font-bold">{message}</span>
     </div>
