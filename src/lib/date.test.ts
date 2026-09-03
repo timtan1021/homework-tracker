@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  addDays,
   dateFromKey,
   formatDateHeading,
   isPastDeadline,
   recentDateKeys,
   startOfWeek,
+  submissionTiming,
   toDateKey,
   weekDates,
   weekdayOfDateKey,
@@ -157,5 +159,45 @@ describe("weekDates", () => {
       "2026-09-04",
       "2026-09-05",
     ]);
+  });
+});
+
+describe("addDays", () => {
+  it("指定日数だけ先に進める", () => {
+    expect(addDays("2026-08-24", 1)).toBe("2026-08-25");
+  });
+
+  it("負の日数で過去に戻せる", () => {
+    expect(addDays("2026-08-24", -1)).toBe("2026-08-23");
+  });
+
+  it("月をまたぐ", () => {
+    expect(addDays("2026-08-31", 1)).toBe("2026-09-01");
+  });
+
+  it("0日なら同じ日を返す", () => {
+    expect(addDays("2026-08-24", 0)).toBe("2026-08-24");
+  });
+});
+
+describe("submissionTiming", () => {
+  it("提出日と同じ日に受け取ったらonTime", () => {
+    const submittedAt = new Date(2026, 7, 24, 8, 0).getTime();
+    expect(submissionTiming("2026-08-24", submittedAt)).toBe("onTime");
+  });
+
+  it("提出日より後に受け取ったらlate", () => {
+    const submittedAt = new Date(2026, 7, 25, 8, 0).getTime();
+    expect(submissionTiming("2026-08-24", submittedAt)).toBe("late");
+  });
+
+  it("提出日より前に受け取ったらearly", () => {
+    const submittedAt = new Date(2026, 7, 23, 8, 0).getTime();
+    expect(submissionTiming("2026-08-24", submittedAt)).toBe("early");
+  });
+
+  it("締切時刻は見ない。同じ日なら何時でもonTime", () => {
+    const submittedAt = new Date(2026, 7, 24, 23, 59).getTime();
+    expect(submissionTiming("2026-08-24", submittedAt)).toBe("onTime");
   });
 });

@@ -88,3 +88,33 @@ export function weekDates(startDate: string): string[] {
     return toDateKey(current);
   });
 }
+
+/** dateKey から days 日後（負なら前）の日付キーを返す。 */
+export function addDays(dateKey: string, days: number): string {
+  const date = dateFromKey(dateKey);
+  date.setDate(date.getDate() + days);
+  return toDateKey(date);
+}
+
+export type SubmissionTiming = "early" | "onTime" | "late";
+
+/**
+ * 提出物の対象日と、実際に受け取った時刻(submittedAt)から、
+ * 提出のタイミングを求める。
+ *
+ * 受け取った日は submittedAt をローカルで日付に切ったもの。締切時刻は見ない。
+ * "YYYY-MM-DD" は辞書順の比較が日付の前後と一致する。
+ */
+export function submissionTiming(
+  dateKey: string,
+  submittedAt: number,
+): SubmissionTiming {
+  const received = toDateKey(new Date(submittedAt));
+  if (received < dateKey) {
+    return "early";
+  }
+  if (received > dateKey) {
+    return "late";
+  }
+  return "onTime";
+}
