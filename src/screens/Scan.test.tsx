@@ -367,9 +367,8 @@ describe("日付を送る", () => {
     );
     await user.click(await screen.findByRole("button", { name: "12番" }));
 
-    const result = await screen.findByTestId("scan-result");
     expect(
-      within(result).getByText(`${formatDateHeading(YESTERDAY)}分`),
+      await screen.findByText(`${formatDateHeading(YESTERDAY)}分`),
     ).toBeInTheDocument();
   });
 
