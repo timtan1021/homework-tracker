@@ -6,6 +6,9 @@
   --color-ai: #22406b;
   --color-kogan: #c9d6e4;
   --color-shu: #d8452e;
+  /* 提出済み・達成・進捗の面にだけ使う。文字色にしない(画用紙の上で約2.4:1しか無い) */
+  --color-yamabuki: #e39b12;
+  --color-yamabuki-usu: #fbeccb;
 
   --font-ui: "BIZ UDPGothic", system-ui, sans-serif;
   --font-num: "BIZ UDGothic", ui-monospace, monospace;

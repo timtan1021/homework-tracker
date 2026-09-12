@@ -118,3 +118,15 @@ export function submissionTiming(
   }
   return "onTime";
 }
+
+/**
+ * "HH:mm" の締切まであと何分か。
+ *
+ * 同じ日の締切に対してのみ使う。日付をまたぐ呼び出しでは負や誤った値になる。
+ */
+export function minutesUntil(deadline: string, now: Date): number {
+  const [hours, minutes] = deadline.split(":").map(Number);
+  const deadlineMinutes = hours * 60 + minutes;
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  return deadlineMinutes - nowMinutes;
+}

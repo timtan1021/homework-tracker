@@ -1,5 +1,5 @@
 import { useFreshDb } from "../test/db";
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderAsTeacher } from "../test/router";
@@ -9,12 +9,14 @@ import { addSubmissionType } from "../db/submissionTypes";
 import { addDateSubmission } from "../db/dateSubmissions";
 import { listSubmissions, recordSubmission } from "../db/submissions";
 import { getDb } from "../db/schema";
+import { setSetting } from "../db/settings";
 import * as gradingModule from "../db/grading";
 import { formatDateHeading, toDateKey } from "../lib/date";
 
 useFreshDb();
 
 let cohortId = "";
+let typeId = "";
 
 beforeEach(async () => {
   const cohort = await createCohort({ year: 2026, className: "5年1組" });
@@ -26,6 +28,7 @@ beforeEach(async () => {
     deadline: "08:15",
     weekdays: [1, 2, 3, 4, 5],
   });
+  typeId = type.id;
   const student = await addStudent({ cohortId, attendanceNumber: 5 });
 
   await recordSubmission({
@@ -37,6 +40,55 @@ beforeEach(async () => {
 });
 
 describe("採点画面", () => {
+  it("未採点と再提出待ちのタブに件数が出る", async () => {
+    renderAsTeacher("/grading");
+
+    const ungraded = await screen.findByRole("tab", { name: /未採点/ });
+    expect(ungraded).toHaveAttribute("aria-selected", "true");
+    // 件数はitemsの読み込み完了後に更新されるため、要素の出現ではなく
+    // 中身の更新をfindByTextで待つ(getByTextだと読み込み前の初期値"0"を
+    // 掴んでしまうことがある)。
+    expect(await within(ungraded).findByText("1")).toBeInTheDocument();
+
+    const resubmit = screen.getByRole("tab", { name: /再提出待ち/ });
+    expect(resubmit).toHaveAttribute("aria-selected", "false");
+    expect(within(resubmit).getByText("0")).toBeInTheDocument();
+  });
+
+  it("タブを切り替えると表示が変わる", async () => {
+    const user = userEvent.setup();
+    renderAsTeacher("/grading");
+
+    await screen.findByText("計算ドリル");
+    await user.click(screen.getByRole("tab", { name: /再提出待ち/ }));
+
+    expect(
+      screen.getByRole("tab", { name: /再提出待ち/ }),
+    ).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByText("再提出待ちの生徒はいません")).toBeInTheDocument();
+    expect(screen.queryByText("計算ドリル")).toBeNull();
+  });
+
+  it("提出物の見出しに残り件数が出る", async () => {
+    renderAsTeacher("/grading");
+
+    expect(await screen.findByText("あと1件")).toBeInTheDocument();
+  });
+
+  it("未採点が0件なら山吹の帯で知らせる", async () => {
+    const user = userEvent.setup();
+    renderAsTeacher("/grading");
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: "8月24日(月)の5番（計算ドリル）を合格にする",
+      }),
+    );
+
+    const band = await screen.findByText("未採点の提出物はありません");
+    expect(band).toHaveClass("bg-yamabuki");
+  });
+
   it("未採点の提出物を提出物ごとにまとめて表示する", async () => {
     renderAsTeacher("/grading");
 
@@ -47,12 +99,123 @@ describe("採点画面", () => {
   });
 
   it("再提出待ちが無ければ案内を出す", async () => {
+    const user = userEvent.setup();
     renderAsTeacher("/grading");
     await screen.findByText("計算ドリル");
+    await user.click(screen.getByRole("tab", { name: /再提出待ち/ }));
 
     expect(
       screen.getByText("再提出待ちの生徒はいません"),
     ).toBeInTheDocument();
+  });
+
+  it("設定OFFなら氏名が出ない", async () => {
+    const student = await addStudent({
+      cohortId,
+      attendanceNumber: 9,
+      name: "青木",
+    });
+    await recordSubmission({
+      cohortId,
+      studentId: student.id,
+      submissionTypeIds: [typeId],
+      date: "2026-08-24",
+    });
+
+    renderAsTeacher("/grading");
+
+    await screen.findByRole("button", {
+      name: "8月24日(月)の9番（計算ドリル）を合格にする",
+    });
+    expect(screen.queryByText("青木")).toBeNull();
+  });
+
+  it("設定ONなら氏名が出る", async () => {
+    const student = await addStudent({
+      cohortId,
+      attendanceNumber: 9,
+      name: "青木",
+    });
+    await recordSubmission({
+      cohortId,
+      studentId: student.id,
+      submissionTypeIds: [typeId],
+      date: "2026-08-24",
+    });
+    await setSetting("showStudentNames", true);
+
+    renderAsTeacher("/grading");
+
+    expect(await screen.findByText("青木")).toBeInTheDocument();
+  });
+
+  it("別の行の「⋯」を押すと前の行の「提出を取り消す」が閉じる", async () => {
+    const user = userEvent.setup();
+    const second = await addStudent({ cohortId, attendanceNumber: 6 });
+    await recordSubmission({
+      cohortId,
+      studentId: second.id,
+      submissionTypeIds: [typeId],
+      date: "2026-08-24",
+    });
+
+    renderAsTeacher("/grading");
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: "8月24日(月)の5番（計算ドリル）のその他の操作",
+      }),
+    );
+    expect(
+      screen.getByRole("button", {
+        name: "8月24日(月)の5番（計算ドリル）の提出を取り消す",
+      }),
+    ).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "8月24日(月)の6番（計算ドリル）のその他の操作",
+      }),
+    );
+
+    expect(
+      screen.queryByRole("button", {
+        name: "8月24日(月)の5番（計算ドリル）の提出を取り消す",
+      }),
+    ).toBeNull();
+    expect(
+      screen.getByRole("button", {
+        name: "8月24日(月)の6番（計算ドリル）の提出を取り消す",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("タブを切り替えて戻すとメニューは閉じている", async () => {
+    const user = userEvent.setup();
+    renderAsTeacher("/grading");
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: "8月24日(月)の5番（計算ドリル）のその他の操作",
+      }),
+    );
+    expect(
+      screen.getByRole("button", {
+        name: "8月24日(月)の5番（計算ドリル）の提出を取り消す",
+      }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: /再提出待ち/ }));
+    await user.click(screen.getByRole("tab", { name: /未採点/ }));
+
+    await screen.findByRole("button", {
+      name: "8月24日(月)の5番（計算ドリル）のその他の操作",
+    });
+    expect(
+      screen.queryByRole("button", {
+        name: "8月24日(月)の5番（計算ドリル）の提出を取り消す",
+      }),
+    ).toBeNull();
   });
 
   it("合格にすると未採点セクションから消える", async () => {
@@ -86,25 +249,33 @@ describe("採点画面", () => {
       expect(
         screen.getByText("未採点の提出物はありません"),
       ).toBeInTheDocument();
-      expect(
-        screen.getByRole("button", {
-          name: "8月24日(月)の5番（計算ドリル）を未採点に戻す",
-        }),
-      ).toBeInTheDocument();
     });
-  });
-
-  it("未採点の行に「提出を取り消す」ボタンが出る", async () => {
-    renderAsTeacher("/grading");
-
+    await user.click(screen.getByRole("tab", { name: /再提出待ち/ }));
     expect(
       await screen.findByRole("button", {
+        name: "8月24日(月)の5番（計算ドリル）を未採点に戻す",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("未採点の行には「⋯」があり、押すと「提出を取り消す」が出る", async () => {
+    const user = userEvent.setup();
+    renderAsTeacher("/grading");
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: "8月24日(月)の5番（計算ドリル）のその他の操作",
+      }),
+    );
+
+    expect(
+      screen.getByRole("button", {
         name: "8月24日(月)の5番（計算ドリル）の提出を取り消す",
       }),
     ).toBeInTheDocument();
   });
 
-  it("再提出待ちの行には「提出を取り消す」ボタンを出さない", async () => {
+  it("再提出待ちの行には「⋯」を出さない", async () => {
     const user = userEvent.setup();
     renderAsTeacher("/grading");
 
@@ -113,21 +284,27 @@ describe("採点画面", () => {
         name: "8月24日(月)の5番（計算ドリル）を再提出にする",
       }),
     );
+    await user.click(screen.getByRole("tab", { name: /再提出待ち/ }));
     await screen.findByRole("button", {
       name: "8月24日(月)の5番（計算ドリル）を未採点に戻す",
     });
 
     expect(
-      screen.queryByRole("button", { name: /提出を取り消す/ }),
-    ).not.toBeInTheDocument();
+      screen.queryByRole("button", { name: /のその他の操作/ }),
+    ).toBeNull();
   });
 
-  it("提出を取り消すを押すと確認ダイアログが出る", async () => {
+  it("「⋯」から提出を取り消すと確認ダイアログが出る", async () => {
     const user = userEvent.setup();
     renderAsTeacher("/grading");
 
     await user.click(
       await screen.findByRole("button", {
+        name: "8月24日(月)の5番（計算ドリル）のその他の操作",
+      }),
+    );
+    await user.click(
+      screen.getByRole("button", {
         name: "8月24日(月)の5番（計算ドリル）の提出を取り消す",
       }),
     );
@@ -143,6 +320,11 @@ describe("採点画面", () => {
 
     await user.click(
       await screen.findByRole("button", {
+        name: "8月24日(月)の5番（計算ドリル）のその他の操作",
+      }),
+    );
+    await user.click(
+      screen.getByRole("button", {
         name: "8月24日(月)の5番（計算ドリル）の提出を取り消す",
       }),
     );
@@ -150,7 +332,7 @@ describe("採点画面", () => {
 
     expect(
       await screen.findByRole("button", {
-        name: "8月24日(月)の5番（計算ドリル）の提出を取り消す",
+        name: "8月24日(月)の5番（計算ドリル）を合格にする",
       }),
     ).toBeInTheDocument();
     expect(await listSubmissions(cohortId, "2026-08-24")).toHaveLength(1);
@@ -162,6 +344,11 @@ describe("採点画面", () => {
 
     await user.click(
       await screen.findByRole("button", {
+        name: "8月24日(月)の5番（計算ドリル）のその他の操作",
+      }),
+    );
+    await user.click(
+      screen.getByRole("button", {
         name: "8月24日(月)の5番（計算ドリル）の提出を取り消す",
       }),
     );
@@ -184,6 +371,7 @@ describe("採点画面", () => {
         name: "8月24日(月)の5番（計算ドリル）を再提出にする",
       }),
     );
+    await user.click(screen.getByRole("tab", { name: /再提出待ち/ }));
     await screen.findByRole("button", {
       name: "8月24日(月)の5番（計算ドリル）を未採点に戻す",
     });
@@ -194,10 +382,8 @@ describe("採点画面", () => {
       }),
     );
 
+    await user.click(screen.getByRole("tab", { name: /未採点/ }));
     await waitFor(() => {
-      expect(
-        screen.getByText("再提出待ちの生徒はいません"),
-      ).toBeInTheDocument();
       expect(
         screen.getByRole("button", { name: "8月24日(月)の5番（計算ドリル）を合格にする" }),
       ).toBeInTheDocument();
@@ -213,6 +399,7 @@ describe("採点画面", () => {
         name: "8月24日(月)の5番（計算ドリル）を再提出にする",
       }),
     );
+    await user.click(screen.getByRole("tab", { name: /再提出待ち/ }));
     await screen.findByRole("button", {
       name: "8月24日(月)の5番（計算ドリル）を未採点に戻す",
     });
@@ -349,6 +536,7 @@ describe("採点画面", () => {
         name: "8月24日(月)の5番（計算ドリル）を再提出にする",
       }),
     );
+    await user.click(screen.getByRole("tab", { name: /再提出待ち/ }));
     await screen.findByRole("button", {
       name: "8月24日(月)の5番（計算ドリル）を未採点に戻す",
     });
@@ -463,12 +651,15 @@ describe("採点画面", () => {
 
     renderAsTeacher("/grading");
 
+    await user.click(await screen.findByRole("tab", { name: /再提出待ち/ }));
+
     await user.click(
       await screen.findByRole("button", {
         name: `${formatDateHeading(yesterday)}の9番（日記）を未採点に戻す`,
       }),
     );
 
+    await user.click(screen.getByRole("tab", { name: /未採点/ }));
     await waitFor(() => {
       expect(screen.getByText(formatDateHeading(yesterday))).toBeInTheDocument();
       expect(

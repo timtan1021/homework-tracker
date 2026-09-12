@@ -1,21 +1,17 @@
 import { useState } from "react";
 import { Link } from "react-router";
+import { CheckTable } from "../components/CheckTable";
 import { CohortGate, useActiveCohort } from "../components/CohortGate";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { DateStepper } from "../components/DateStepper";
 import { FullScreenMessage } from "../components/FullScreenMessage";
+import { ProgressBar } from "../components/ProgressBar";
+import type { Student, SubmissionType } from "../db/schema";
 import { markAbsent, unmarkAbsent } from "../db/submissions";
+import { useDailyRoster } from "../hooks/useDailyRoster";
 import { useRecentNonSubmissionCounts } from "../hooks/useRecentNonSubmissionCounts";
-import { useTodayNonSubmitters } from "../hooks/useTodayNonSubmitters";
+import { useSetting } from "../hooks/useSetting";
 import { dateFromKey, formatDateHeading, toDateKey } from "../lib/date";
-
-/** "HH:mm" の締切まであと何分か。負の値にはならない呼び出し方を前提とする。 */
-function minutesUntil(deadline: string, now: Date): number {
-  const [hours, minutes] = deadline.split(":").map(Number);
-  const deadlineMinutes = hours * 60 + minutes;
-  const nowMinutes = now.getHours() * 60 + now.getMinutes();
-  return deadlineMinutes - nowMinutes;
-}
 
 type Pending = {
   studentId: string;
@@ -25,6 +21,8 @@ type Pending = {
 };
 
 const DATE_LABELS = { prev: "← 前日", next: "翌日 →", backToToday: "今日へ" };
+
+const EMPTY_ROSTER = { columns: [], rows: [], activeCount: 0 };
 
 function UnsubmittedBody() {
   const cohort = useActiveCohort();
@@ -37,14 +35,15 @@ function UnsubmittedBody() {
   const [date, setDate] = useState(today);
   const isToday = date === today;
 
-  const groups = useTodayNonSubmitters(cohort.id, date, now);
+  const roster = useDailyRoster(cohort.id, date, now);
   const counts = useRecentNonSubmissionCounts(cohort.id, date, now);
+  const showNames = useSetting("showStudentNames");
 
   const [pending, setPending] = useState<Pending | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  if (groups.status === "error") {
-    return <FullScreenMessage tone="error">{groups.message}</FullScreenMessage>;
+  if (roster.status === "error") {
+    return <FullScreenMessage tone="error">{roster.message}</FullScreenMessage>;
   }
   if (counts.status === "error") {
     return <FullScreenMessage tone="error">{counts.message}</FullScreenMessage>;
@@ -53,8 +52,14 @@ function UnsubmittedBody() {
   // 再読み込み中は前回の一覧が無いので空として扱う。日付を送るたびに
   // 全画面の読み込み表示に戻すと、ヘッダーとDateStepperごと消えて
   // 押した直後の位置が分からなくなる(Grading.tsx・Scan.tsxと同じ理由)。
-  const groupsData = groups.status === "ready" ? groups.data : [];
+  const rosterData = roster.status === "ready" ? roster.data : EMPTY_ROSTER;
   const countsData = counts.status === "ready" ? counts.data : [];
+
+  const completed = rosterData.columns.filter(
+    (column) =>
+      rosterData.activeCount > 0 &&
+      column.submittedCount >= rosterData.activeCount,
+  );
 
   function changeDate(next: string): void {
     setDate(next);
@@ -63,8 +68,21 @@ function UnsubmittedBody() {
   }
 
   function reload(): void {
-    groups.reload();
+    roster.reload();
     counts.reload();
+  }
+
+  function handleCellTap(
+    student: Student,
+    type: SubmissionType,
+    state: "none" | "absent",
+  ): void {
+    setPending({
+      studentId: student.id,
+      submissionTypeId: type.id,
+      attendanceNumber: student.attendanceNumber,
+      action: state === "absent" ? "unmarkAbsent" : "markAbsent",
+    });
   }
 
   function confirmPending(): void {
@@ -121,92 +139,59 @@ function UnsubmittedBody() {
         </p>
       )}
 
-      <section className="flex flex-col gap-5">
+      <section className="flex flex-col gap-4">
         <h2 className="font-display text-ai text-xl">
-          {isToday ? "今日の未提出" : "この日の未提出"}
+          {isToday ? "今日の提出状況" : "この日の提出状況"}
         </h2>
 
-        {groupsData.length === 0 ? (
+        {roster.status === "ready" && rosterData.columns.length === 0 ? (
           <p>
             {isToday
               ? "今日は確認する提出物がありません"
               : "この日は確認する提出物がありません"}
           </p>
-        ) : (
-          groupsData.map((group) => (
-            <div key={group.type.id} className="flex flex-col gap-2">
-              <div className="flex items-center justify-between gap-3">
-                <p className="font-bold">
-                  {group.type.name}・締切{group.type.deadline}
-                </p>
-                <span
-                  className={
-                    group.deadlinePassed
-                      ? "bg-sumi rounded px-2 py-1 text-sm font-bold text-gayoshi"
-                      : "border-ai text-ai rounded border px-2 py-1 text-sm font-bold"
-                  }
-                >
-                  {group.deadlinePassed
-                    ? "確定"
-                    : `あと${minutesUntil(group.type.deadline, now)}分`}
-                </span>
-              </div>
+        ) : rosterData.columns.length > 0 ? (
+          <>
+            {completed.map((column) => (
+              <p
+                key={column.type.id}
+                className="bg-yamabuki text-sumi rounded px-3 py-2 font-bold"
+              >
+                {column.type.name} 全員提出
+              </p>
+            ))}
 
-              {group.students.length === 0 ? (
-                <p className="text-sm">{group.type.name}は全員提出しました</p>
-              ) : (
-                <ul className="grid grid-cols-4 gap-2 sm:grid-cols-6 md:grid-cols-8">
-                  {group.students.map(({ student, status }) => {
-                    const absent = status === "absent";
-                    const label = absent
-                      ? `${student.attendanceNumber}番（欠席）`
-                      : `${student.attendanceNumber}番`;
-
-                    return (
-                      <li key={student.id}>
-                        <button
-                          type="button"
-                          data-testid="unsubmitted-cell"
-                          data-status={status}
-                          aria-label={label}
-                          onClick={() =>
-                            setPending({
-                              studentId: student.id,
-                              submissionTypeId: group.type.id,
-                              attendanceNumber: student.attendanceNumber,
-                              action: absent ? "unmarkAbsent" : "markAbsent",
-                            })
-                          }
-                          className={[
-                            "flex aspect-square min-h-16 w-full items-center justify-center rounded",
-                            absent
-                              ? "border-kogan text-kogan hatch border-2 border-dashed"
-                              : "border-ai text-sumi border-2",
-                          ].join(" ")}
-                        >
-                          <span className="font-num text-[2rem] leading-none font-bold">
-                            {student.attendanceNumber}
-                          </span>
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
+            <div className="flex flex-col gap-2">
+              {rosterData.columns.map((column) => (
+                <ProgressBar
+                  key={column.type.id}
+                  label={column.type.name}
+                  value={column.submittedCount}
+                  max={rosterData.activeCount}
+                />
+              ))}
             </div>
-          ))
-        )}
+
+            <CheckTable
+              roster={rosterData}
+              showNames={showNames.value}
+              now={now}
+              date={date}
+              onCellTap={handleCellTap}
+            />
+          </>
+        ) : null}
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="font-display text-ai text-xl">
+        <h2 id="recent-heading" className="font-display text-ai text-xl">
           直近2週間で未提出が多い生徒
         </h2>
 
         {countsData.length === 0 ? (
           <p>未提出はありません</p>
         ) : (
-          <ul className="flex flex-col gap-2">
+          <ul aria-labelledby="recent-heading" className="flex flex-col gap-2">
             {countsData.map(({ student, count }) => (
               <li
                 key={student.id}
@@ -214,7 +199,9 @@ function UnsubmittedBody() {
               >
                 <span className="font-num font-bold">
                   {student.attendanceNumber}番
-                  {student.name !== "" ? ` ${student.name}` : ""}
+                  {showNames.value && student.name !== ""
+                    ? ` ${student.name}`
+                    : ""}
                 </span>
                 <span className="font-num font-bold">{count}回</span>
               </li>

@@ -7,6 +7,7 @@ import { FullScreenMessage } from "../components/FullScreenMessage";
 import { clearGrade, gradeSubmission, type GradingItem } from "../db/grading";
 import { deleteSubmission } from "../db/submissions";
 import { useGradingItems } from "../hooks/useGradingItems";
+import { useSetting } from "../hooks/useSetting";
 import {
   dateFromKey,
   formatDateHeading,
@@ -48,76 +49,110 @@ function GradingRow({
   onGrade,
   onClear,
   onWithdraw,
+  menuOpen,
+  onToggleMenu,
+  showName,
 }: {
   item: GradingItem;
   onGrade: (id: string, grade: "passed" | "resubmit") => void;
   onClear?: (item: GradingItem) => void;
   onWithdraw?: (item: GradingItem) => void;
+  menuOpen: boolean;
+  onToggleMenu: (id: string) => void;
+  showName: boolean;
 }) {
   const { submission, student } = item;
   const dateLabel = formatDateHeading(dateFromKey(submission.date));
-  const nameLabel = `${student.attendanceNumber}番${student.name}`;
   const timing = submissionTiming(submission.date, submission.submittedAt);
   const timingLabel =
-    timing === "late" ? "・遅れて提出" : timing === "early" ? "・先に提出" : "";
+    timing === "late" ? "遅れて提出" : timing === "early" ? "先に提出" : "";
+  const who = `${dateLabel}の${student.attendanceNumber}番（${item.type.name}）`;
 
   return (
-    <li className="border-kogan flex items-center justify-between gap-2 border-b py-2">
-      <span className="font-num">
-        {dateLabel} {nameLabel}
-        {timingLabel}
-      </span>
-      <div className="flex shrink-0 gap-2">
-        <button
-          type="button"
-          aria-label={`${dateLabel}の${student.attendanceNumber}番（${item.type.name}）を合格にする`}
-          onClick={() => onGrade(submission.id, "passed")}
-          className="bg-ai min-h-11 rounded px-3 font-bold text-gayoshi"
-        >
-          合格
-        </button>
-        {onClear === undefined ? (
-          <>
+    <li className="border-kogan flex flex-col border-b py-2">
+      <div className="flex items-center justify-between gap-2">
+        <span className="flex items-baseline gap-2">
+          {onClear !== undefined && (
+            <span className="font-num text-sm">{dateLabel}</span>
+          )}
+          <span className="font-num text-[2rem] leading-none font-bold">
+            {student.attendanceNumber}
+          </span>
+          {showName && student.name !== "" && (
+            <span className="text-sm">{student.name}</span>
+          )}
+          {timingLabel !== "" && (
+            <span className="text-sm">・{timingLabel}</span>
+          )}
+        </span>
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            aria-label={`${who}を合格にする`}
+            onClick={() => onGrade(submission.id, "passed")}
+            className="bg-yamabuki text-sumi min-h-11 rounded px-3 font-bold"
+          >
+            合格
+          </button>
+          {onClear === undefined ? (
             <button
               type="button"
-              aria-label={`${dateLabel}の${student.attendanceNumber}番（${item.type.name}）を再提出にする`}
+              aria-label={`${who}を再提出にする`}
               onClick={() => onGrade(submission.id, "resubmit")}
               className="border-ai text-ai min-h-11 rounded border-2 px-3 font-bold"
             >
               再提出
             </button>
-            {onWithdraw !== undefined && (
-              <button
-                type="button"
-                aria-label={`${dateLabel}の${student.attendanceNumber}番（${item.type.name}）の提出を取り消す`}
-                onClick={() => onWithdraw(item)}
-                className="text-ai min-h-11 px-3 font-bold underline"
-              >
-                提出を取り消す
-              </button>
-            )}
-          </>
-        ) : (
+          ) : (
+            <button
+              type="button"
+              aria-label={`${who}を未採点に戻す`}
+              onClick={() => onClear(item)}
+              className="text-ai min-h-11 px-3 font-bold underline"
+            >
+              未採点に戻す
+            </button>
+          )}
+          {onWithdraw !== undefined && (
+            <button
+              type="button"
+              aria-label={`${who}のその他の操作`}
+              aria-expanded={menuOpen}
+              onClick={() => onToggleMenu(submission.id)}
+              className="text-ai size-11 rounded font-bold"
+            >
+              ⋯
+            </button>
+          )}
+        </div>
+      </div>
+      {onWithdraw !== undefined && menuOpen && (
+        <div className="flex justify-end pt-1">
           <button
             type="button"
-            aria-label={`${dateLabel}の${student.attendanceNumber}番（${item.type.name}）を未採点に戻す`}
-            onClick={() => onClear(item)}
+            aria-label={`${who}の提出を取り消す`}
+            onClick={() => onWithdraw(item)}
             className="text-ai min-h-11 px-3 font-bold underline"
           >
-            未採点に戻す
+            提出を取り消す
           </button>
-        )}
-      </div>
+        </div>
+      )}
     </li>
   );
 }
+
+type Tab = "ungraded" | "resubmit";
 
 function GradingBody() {
   const cohort = useActiveCohort();
   const [today] = useState(() => toDateKey(new Date()));
   const [date, setDate] = useState(today);
   const items = useGradingItems(cohort.id, date);
+  const showNames = useSetting("showStudentNames");
   const [error, setError] = useState<string | null>(null);
+  const [tab, setTab] = useState<Tab>("ungraded");
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [pendingWithdraw, setPendingWithdraw] = useState<GradingItem | null>(
     null,
   );
@@ -128,11 +163,13 @@ function GradingBody() {
 
   function changeDate(next: string): void {
     setError(null);
+    setOpenMenuId(null);
     setDate(next);
   }
 
   function grade(id: string, value: "passed" | "resubmit"): void {
     setError(null);
+    setOpenMenuId(null);
     void gradeSubmission(id, value)
       .then(() => items.reload())
       .catch((cause: unknown) => {
@@ -166,6 +203,7 @@ function GradingBody() {
 
   function withdraw(item: GradingItem): void {
     setError(null);
+    setOpenMenuId(null);
     void deleteSubmission(item.submission.id)
       .then(() => items.reload())
       .catch((cause: unknown) => {
@@ -175,6 +213,15 @@ function GradingBody() {
             : "保存できませんでした。もう一度お試しください",
         );
       });
+  }
+
+  function toggleMenu(id: string): void {
+    setOpenMenuId((current) => (current === id ? null : id));
+  }
+
+  function requestWithdraw(item: GradingItem): void {
+    setOpenMenuId(null);
+    setPendingWithdraw(item);
   }
 
   // 再読み込み中は前回の一覧が無いので空として扱う。日付を送るたびに
@@ -193,6 +240,12 @@ function GradingBody() {
   const ungradedGroups = groupByType(data.ungraded);
   const resubmitGroups = groupByType(data.resubmitPending);
   const oldestUngradedDate = data.oldestUngradedDate;
+
+  const tabClass = (selected: boolean) =>
+    [
+      "flex min-h-11 flex-1 items-center justify-center gap-2 rounded font-bold",
+      selected ? "bg-ai text-gayoshi" : "border-ai text-ai border-2",
+    ].join(" ");
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-3xl flex-col gap-6 p-4">
@@ -221,64 +274,123 @@ function GradingBody() {
         </p>
       )}
 
-      <section className="flex flex-col gap-5">
-        <h2 className="font-display text-ai text-xl">未採点</h2>
+      <div role="tablist" aria-label="採点の区分" className="flex gap-2">
+        <button
+          role="tab"
+          id="tab-ungraded"
+          type="button"
+          aria-selected={tab === "ungraded"}
+          aria-controls="panel-ungraded"
+          onClick={() => {
+            setOpenMenuId(null);
+            setTab("ungraded");
+          }}
+          className={tabClass(tab === "ungraded")}
+        >
+          未採点
+          <span className="bg-yamabuki text-sumi font-num rounded-full px-2 text-sm">
+            {data.ungraded.length}
+          </span>
+        </button>
+        <button
+          role="tab"
+          id="tab-resubmit"
+          type="button"
+          aria-selected={tab === "resubmit"}
+          aria-controls="panel-resubmit"
+          onClick={() => {
+            setOpenMenuId(null);
+            setTab("resubmit");
+          }}
+          className={tabClass(tab === "resubmit")}
+        >
+          再提出待ち
+          <span className="bg-yamabuki text-sumi font-num rounded-full px-2 text-sm">
+            {data.resubmitPending.length}
+          </span>
+        </button>
+      </div>
 
-        {data.otherDaysUngradedCount > 0 && oldestUngradedDate !== null && (
-          <button
-            type="button"
-            onClick={() => changeDate(oldestUngradedDate)}
-            className="text-ai min-h-11 self-start px-3 font-bold underline"
-          >
-            ほかの日に未採点 {data.otherDaysUngradedCount}件 →
-            一番古い日へ
-          </button>
-        )}
+      {tab === "ungraded" ? (
+        <section
+          role="tabpanel"
+          id="panel-ungraded"
+          aria-labelledby="tab-ungraded"
+          className="flex flex-col gap-5"
+        >
+          {data.otherDaysUngradedCount > 0 && oldestUngradedDate !== null && (
+            <button
+              type="button"
+              onClick={() => changeDate(oldestUngradedDate)}
+              className="text-ai min-h-11 self-start px-3 font-bold underline"
+            >
+              ほかの日に未採点 {data.otherDaysUngradedCount}件 →
+              一番古い日へ
+            </button>
+          )}
 
-        {ungradedGroups.length === 0 ? (
-          <p>未採点の提出物はありません</p>
-        ) : (
-          ungradedGroups.map((group) => (
-            <div key={group.typeId} className="flex flex-col gap-1">
-              <p className="font-bold">{group.typeName}</p>
-              <ul className="flex flex-col">
-                {group.items.map((item) => (
-                  <GradingRow
-                    key={item.submission.id}
-                    item={item}
-                    onGrade={grade}
-                    onWithdraw={setPendingWithdraw}
-                  />
-                ))}
-              </ul>
-            </div>
-          ))
-        )}
-      </section>
-
-      <section className="flex flex-col gap-5">
-        <h2 className="font-display text-ai text-xl">再提出待ち</h2>
-
-        {resubmitGroups.length === 0 ? (
-          <p>再提出待ちの生徒はいません</p>
-        ) : (
-          resubmitGroups.map((group) => (
-            <div key={group.typeId} className="flex flex-col gap-1">
-              <p className="font-bold">{group.typeName}</p>
-              <ul className="flex flex-col">
-                {group.items.map((item) => (
-                  <GradingRow
-                    key={item.submission.id}
-                    item={item}
-                    onGrade={grade}
-                    onClear={clear}
-                  />
-                ))}
-              </ul>
-            </div>
-          ))
-        )}
-      </section>
+          {ungradedGroups.length === 0 ? (
+            <p className="bg-yamabuki text-sumi rounded px-3 py-2 font-bold">
+              未採点の提出物はありません
+            </p>
+          ) : (
+            ungradedGroups.map((group) => (
+              <div key={group.typeId} className="flex flex-col gap-1">
+                <div className="flex items-baseline justify-between">
+                  <p className="font-bold">{group.typeName}</p>
+                  <span className="font-num text-sm">あと{group.items.length}件</span>
+                </div>
+                <ul className="flex flex-col">
+                  {group.items.map((item) => (
+                    <GradingRow
+                      key={item.submission.id}
+                      item={item}
+                      onGrade={grade}
+                      onWithdraw={requestWithdraw}
+                      menuOpen={openMenuId === item.submission.id}
+                      onToggleMenu={toggleMenu}
+                      showName={showNames.value}
+                    />
+                  ))}
+                </ul>
+              </div>
+            ))
+          )}
+        </section>
+      ) : (
+        <section
+          role="tabpanel"
+          id="panel-resubmit"
+          aria-labelledby="tab-resubmit"
+          className="flex flex-col gap-5"
+        >
+          {resubmitGroups.length === 0 ? (
+            <p>再提出待ちの生徒はいません</p>
+          ) : (
+            resubmitGroups.map((group) => (
+              <div key={group.typeId} className="flex flex-col gap-1">
+                <div className="flex items-baseline justify-between">
+                  <p className="font-bold">{group.typeName}</p>
+                  <span className="font-num text-sm">{group.items.length}人</span>
+                </div>
+                <ul className="flex flex-col">
+                  {group.items.map((item) => (
+                    <GradingRow
+                      key={item.submission.id}
+                      item={item}
+                      onGrade={grade}
+                      onClear={clear}
+                      menuOpen={false}
+                      onToggleMenu={toggleMenu}
+                      showName={showNames.value}
+                    />
+                  ))}
+                </ul>
+              </div>
+            ))
+          )}
+        </section>
+      )}
 
       {pendingWithdraw !== null && (
         <ConfirmDialog

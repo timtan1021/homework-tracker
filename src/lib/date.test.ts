@@ -4,6 +4,7 @@ import {
   dateFromKey,
   formatDateHeading,
   isPastDeadline,
+  minutesUntil,
   recentDateKeys,
   startOfWeek,
   submissionTiming,
@@ -11,6 +12,16 @@ import {
   weekDates,
   weekdayOfDateKey,
 } from "./date";
+
+describe("minutesUntil", () => {
+  it("締切までの分数を返す", () => {
+    expect(minutesUntil("08:15", new Date(2026, 7, 24, 8, 0))).toBe(15);
+  });
+
+  it("時をまたいでも正しい", () => {
+    expect(minutesUntil("09:05", new Date(2026, 7, 24, 8, 50))).toBe(15);
+  });
+});
 
 describe("toDateKey", () => {
   it("YYYY-MM-DD 形式にする", () => {
