@@ -12,13 +12,17 @@ export function SubmissionForm({
   error,
   submitting,
   primaryLabel,
+  secondaryLabel,
   onSubmit,
+  onSecondary,
 }: {
   defaultValues: SubmissionFormValues;
   error: string | null;
   submitting: boolean;
   primaryLabel: string;
+  secondaryLabel?: string;
   onSubmit: (values: SubmissionFormValues) => void;
+  onSecondary?: (values: SubmissionFormValues) => void;
 }) {
   // props からの同期用 useEffect は置かない。
   // 初回描画から effect 実行までの間に入力された値を上書きしてしまうため。
@@ -26,9 +30,13 @@ export function SubmissionForm({
   const [deadline, setDeadline] = useState(defaultValues.deadline);
   const [weekdays, setWeekdays] = useState(defaultValues.weekdays);
 
+  function values(): SubmissionFormValues {
+    return { name, deadline, weekdays };
+  }
+
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
-    onSubmit({ name, deadline, weekdays });
+    onSubmit(values());
   }
 
   return (
@@ -39,6 +47,7 @@ export function SubmissionForm({
           type="text"
           value={name}
           placeholder="計算ドリル"
+          maxLength={30}
           onChange={(event) => setName(event.target.value)}
           className="border-ai rounded border-2 px-3 py-2 text-xl"
         />
@@ -65,13 +74,26 @@ export function SubmissionForm({
         </p>
       )}
 
-      <button
-        type="submit"
-        disabled={submitting}
-        className="bg-ai rounded px-4 py-3 font-bold text-gayoshi disabled:opacity-50"
-      >
-        {primaryLabel}
-      </button>
+      <div className="flex flex-col gap-3">
+        <button
+          type="submit"
+          disabled={submitting}
+          className="bg-ai rounded px-4 py-3 font-bold text-gayoshi disabled:opacity-50"
+        >
+          {primaryLabel}
+        </button>
+
+        {secondaryLabel !== undefined && onSecondary !== undefined && (
+          <button
+            type="button"
+            disabled={submitting}
+            onClick={() => onSecondary(values())}
+            className="border-ai text-ai rounded border-2 px-4 py-3 font-bold disabled:opacity-50"
+          >
+            {secondaryLabel}
+          </button>
+        )}
+      </div>
     </form>
   );
 }

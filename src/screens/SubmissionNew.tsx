@@ -7,27 +7,39 @@ import {
 } from "../components/SubmissionForm";
 import { addSubmissionType } from "../db/submissionTypes";
 
+const DEFAULT_VALUES: SubmissionFormValues = {
+  name: "",
+  deadline: "08:15",
+  weekdays: [1, 2, 3, 4, 5],
+};
+
 function SubmissionNewBody() {
   const cohort = useActiveCohort();
   const navigate = useNavigate();
 
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // 続けて追加のたびに変え、SubmissionForm を作り直して入力を空に戻す
+  // (StudentForm の key={suggested.data} と同じ理由)。
+  const [formKey, setFormKey] = useState(0);
 
-  function handleSubmit(values: SubmissionFormValues) {
+  async function save(values: SubmissionFormValues): Promise<boolean> {
     setSubmitting(true);
     setError(null);
 
-    void addSubmissionType({ cohortId: cohort.id, ...values })
-      .then(() => navigate("/submissions"))
-      .catch((cause: unknown) => {
-        setError(
-          cause instanceof Error
-            ? cause.message
-            : "保存できませんでした。もう一度お試しください",
-        );
-        setSubmitting(false);
-      });
+    try {
+      await addSubmissionType({ cohortId: cohort.id, ...values });
+      return true;
+    } catch (cause: unknown) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "保存できませんでした。もう一度お試しください",
+      );
+      return false;
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -36,15 +48,26 @@ function SubmissionNewBody() {
 
       <div className="mt-6">
         <SubmissionForm
-          defaultValues={{
-            name: "",
-            deadline: "08:15",
-            weekdays: [1, 2, 3, 4, 5],
-          }}
+          key={formKey}
+          defaultValues={DEFAULT_VALUES}
           error={error}
           submitting={submitting}
           primaryLabel="保存する"
-          onSubmit={handleSubmit}
+          secondaryLabel="保存して続けて追加"
+          onSubmit={(values) => {
+            void save(values).then((ok) => {
+              if (ok) {
+                navigate("/submissions");
+              }
+            });
+          }}
+          onSecondary={(values) => {
+            void save(values).then((ok) => {
+              if (ok) {
+                setFormKey((key) => key + 1);
+              }
+            });
+          }}
         />
       </div>
 

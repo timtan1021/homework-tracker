@@ -5,7 +5,9 @@ export type RecordResult =
   | { kind: "recorded"; student: Student }
   | { kind: "already"; student: Student }
   | { kind: "transferredOut"; student: Student }
-  | { kind: "notFound" };
+  | { kind: "notFound" }
+  /** recordSubmission は返さない。スキャン画面が取り消し直後の表示に使う。 */
+  | { kind: "withdrawn"; student: Student };
 
 export async function listSubmissions(
   cohortId: string,
@@ -13,6 +15,25 @@ export async function listSubmissions(
 ): Promise<Submission[]> {
   const db = await getDb();
   return db.getAllFromIndex("submissions", "by-cohort-date", [cohortId, date]);
+}
+
+/**
+ * 1人の生徒の提出記録を全件、日付の新しい順で返す。
+ *
+ * 生徒ごとのインデックスは無いので全件取得してから絞り込む。34人規模の
+ * 1クラスなら十分軽い(countRecentNonSubmissionsと同じやり方)。
+ */
+export async function listSubmissionsForStudent(
+  studentId: string,
+): Promise<Submission[]> {
+  const db = await getDb();
+  const all = await db.getAll("submissions");
+  return all
+    .filter((submission) => submission.studentId === studentId)
+    .sort(
+      (a, b) =>
+        b.date.localeCompare(a.date) || b.submittedAt - a.submittedAt,
+    );
 }
 
 /** その日の提出物ごとの人数。記録が無い提出物はキーごと含まない。 */
@@ -134,6 +155,43 @@ export async function markAbsent(input: {
   });
   await tx.done;
   return { kind: "marked" };
+}
+
+/**
+ * スキャン画面での誤操作の取り消し。指定した提出物ぶんの提出記録を消す。
+ *
+ * 欠席の記録は消さない(欠席は未提出者一覧の操作で扱う)。採点済みでも消す。
+ * 誤スキャンの直後に使うもので、その時点ではまだ採点されていないのが普通。
+ */
+export async function withdrawSubmission(input: {
+  studentId: string;
+  submissionTypeIds: string[];
+  date: string;
+}): Promise<void> {
+  const db = await getDb();
+  const tx = db.transaction("submissions", "readwrite");
+  const index = tx.store.index("by-unique");
+
+  for (const submissionTypeId of input.submissionTypeIds) {
+    const existing = await index.get([
+      input.date,
+      input.studentId,
+      submissionTypeId,
+    ]);
+    if (existing !== undefined && existing.status !== "absent") {
+      await tx.store.delete(existing.id);
+    }
+  }
+  await tx.done;
+}
+
+/**
+ * 提出記録を完全に削除する。採点結果ごと消え、未提出者一覧に再び現れる。
+ * 欠席マークとは別物(欠席はunmarkAbsentで扱う)。
+ */
+export async function deleteSubmission(id: string): Promise<void> {
+  const db = await getDb();
+  await db.delete("submissions", id);
 }
 
 /**

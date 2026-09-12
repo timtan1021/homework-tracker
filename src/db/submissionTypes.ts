@@ -16,9 +16,16 @@ export function normalizeName(name: string): string {
   return name.trim().normalize("NFKC").toLowerCase();
 }
 
+const MAX_NAME_LENGTH = 30;
+
 function assertValidName(name: string): void {
   if (name.trim() === "") {
     throw new ValidationError("提出物の名前を入力してください");
+  }
+  if (name.trim().length > MAX_NAME_LENGTH) {
+    throw new ValidationError(
+      `提出物の名前は${MAX_NAME_LENGTH}文字以内で入力してください`,
+    );
   }
 }
 

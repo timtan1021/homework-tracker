@@ -5,10 +5,13 @@ import { addStudent, transferOutStudent } from "./students";
 import { addSubmissionType } from "./submissionTypes";
 import {
   countByType,
+  deleteSubmission,
   listSubmissions,
+  listSubmissionsForStudent,
   markAbsent,
   recordSubmission,
   unmarkAbsent,
+  withdrawSubmission,
 } from "./submissions";
 
 useFreshDb();
@@ -279,5 +282,133 @@ describe("unmarkAbsent", () => {
     await unmarkAbsent({ studentId, submissionTypeId: drillId, date: DATE });
 
     expect(await listSubmissions(cohortId, DATE)).toHaveLength(1);
+  });
+});
+
+describe("listSubmissionsForStudent", () => {
+  it("日付の新しい順で返す", async () => {
+    await recordSubmission({
+      cohortId,
+      studentId,
+      submissionTypeIds: [drillId],
+      date: "2026-08-24",
+    });
+    await recordSubmission({
+      cohortId,
+      studentId,
+      submissionTypeIds: [readingId],
+      date: "2026-08-25",
+    });
+
+    const history = await listSubmissionsForStudent(studentId);
+
+    expect(history.map((submission) => submission.date)).toEqual([
+      "2026-08-25",
+      "2026-08-24",
+    ]);
+  });
+
+  it("他の生徒の記録は含めない", async () => {
+    const other = await addStudent({ cohortId, attendanceNumber: 3 });
+    await record([drillId], other.id);
+    await record([readingId], studentId);
+
+    const history = await listSubmissionsForStudent(studentId);
+
+    expect(history).toHaveLength(1);
+    expect(history[0].submissionTypeId).toBe(readingId);
+  });
+
+  it("欠席の記録も含める", async () => {
+    await markAbsent({
+      cohortId,
+      studentId,
+      submissionTypeId: drillId,
+      date: DATE,
+    });
+
+    const history = await listSubmissionsForStudent(studentId);
+
+    expect(history).toHaveLength(1);
+    expect(history[0].status).toBe("absent");
+  });
+
+  it("記録が無ければ空配列", async () => {
+    expect(await listSubmissionsForStudent(studentId)).toEqual([]);
+  });
+});
+
+describe("deleteSubmission", () => {
+  it("提出記録を完全に削除し、未提出者一覧に再び現れる", async () => {
+    await record();
+    const [submission] = await listSubmissions(cohortId, DATE);
+
+    await deleteSubmission(submission.id);
+
+    expect(await listSubmissions(cohortId, DATE)).toHaveLength(0);
+    expect(await listSubmissionsForStudent(studentId)).toEqual([]);
+  });
+
+  it("存在しないIDを渡しても何も起きない", async () => {
+    await expect(deleteSubmission("missing")).resolves.toBeUndefined();
+  });
+});
+
+describe("withdrawSubmission", () => {
+  it("指定した提出物ぶんの記録だけを消す", async () => {
+    await record([drillId, readingId]);
+
+    await withdrawSubmission({
+      studentId,
+      submissionTypeIds: [drillId],
+      date: DATE,
+    });
+
+    const remaining = await listSubmissions(cohortId, DATE);
+    expect(remaining.map((s) => s.submissionTypeId)).toEqual([readingId]);
+  });
+
+  it("欠席の記録は消さない", async () => {
+    await markAbsent({
+      cohortId,
+      studentId,
+      submissionTypeId: drillId,
+      date: DATE,
+    });
+
+    await withdrawSubmission({
+      studentId,
+      submissionTypeIds: [drillId],
+      date: DATE,
+    });
+
+    const remaining = await listSubmissions(cohortId, DATE);
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0].status).toBe("absent");
+  });
+
+  it("他の生徒の記録は消さない", async () => {
+    const other = await addStudent({ cohortId, attendanceNumber: 3 });
+    await record([drillId], other.id);
+    await record([drillId], studentId);
+
+    await withdrawSubmission({
+      studentId,
+      submissionTypeIds: [drillId],
+      date: DATE,
+    });
+
+    const remaining = await listSubmissions(cohortId, DATE);
+    expect(remaining.map((s) => s.studentId)).toEqual([other.id]);
+  });
+
+  it("記録が無ければ何もしない", async () => {
+    await expect(
+      withdrawSubmission({
+        studentId,
+        submissionTypeIds: [drillId],
+        date: DATE,
+      }),
+    ).resolves.toBeUndefined();
   });
 });

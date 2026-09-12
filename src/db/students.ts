@@ -16,6 +16,15 @@ function assertValidNumber(attendanceNumber: number): void {
   }
 }
 
+const MAX_NAME_LENGTH = 20;
+
+/** 氏名は空文字を許すが、印刷カードや名簿のレイアウトを崩す長さは拒否する。 */
+function assertValidName(name: string): void {
+  if (name.length > MAX_NAME_LENGTH) {
+    throw new ValidationError(`氏名は${MAX_NAME_LENGTH}文字以内で入力してください`);
+  }
+}
+
 /** 番号が空いているか調べる。excludeId は自分自身（編集時）を除外する。 */
 async function assertNumberIsFree(
   store: StudentsStore,
@@ -76,12 +85,14 @@ export async function addStudent(input: {
   name?: string;
 }): Promise<Student> {
   assertValidNumber(input.attendanceNumber);
+  const name = (input.name ?? "").trim();
+  assertValidName(name);
 
   const student: Student = {
     id: newId(),
     cohortId: input.cohortId,
     attendanceNumber: input.attendanceNumber,
-    name: (input.name ?? "").trim(),
+    name,
     status: "active",
     createdAt: Date.now(),
   };
@@ -100,6 +111,7 @@ export async function updateStudent(
   changes: { attendanceNumber: number; name: string },
 ): Promise<Student> {
   assertValidNumber(changes.attendanceNumber);
+  assertValidName(changes.name.trim());
 
   const db = await getDb();
   const tx = db.transaction("students", "readwrite");

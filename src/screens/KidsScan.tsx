@@ -123,7 +123,10 @@ function KidsScanBody() {
 
   scanHandlerRef.current = handleScan;
 
-  const cameraUsable = camera.state === "running" || camera.state === "starting";
+  const cameraUsable =
+    camera.state === "running" ||
+    camera.state === "starting" ||
+    camera.state === "idle";
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-3xl flex-col gap-4 p-4">
@@ -199,6 +202,7 @@ function KidsScanBody() {
                 message={camera.message}
                 videoRef={camera.videoRef}
                 canvasRef={camera.canvasRef}
+                onStart={camera.start}
               />
             </>
           )}

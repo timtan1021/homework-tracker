@@ -72,7 +72,7 @@ export function ConfirmDialog({
             ref={cancelRef}
             type="button"
             onClick={onCancel}
-            className="border-ai text-ai flex-1 rounded border-2 px-4 py-2 font-bold"
+            className="border-ai text-ai min-h-11 flex-1 rounded border-2 px-4 py-2 font-bold"
           >
             やめる
           </button>
@@ -80,7 +80,7 @@ export function ConfirmDialog({
             ref={confirmRef}
             type="button"
             onClick={onConfirm}
-            className={`flex-1 rounded px-4 py-2 font-bold text-gayoshi ${
+            className={`min-h-11 flex-1 rounded px-4 py-2 font-bold text-gayoshi ${
               tone === "danger" ? "bg-shu" : "bg-ai"
             }`}
           >

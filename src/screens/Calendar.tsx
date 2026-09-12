@@ -186,6 +186,7 @@ function CalendarBody() {
                           type="text"
                           value={editing.value}
                           autoFocus
+                          maxLength={30}
                           onChange={(event) =>
                             setEditing({ ...editing, value: event.target.value })
                           }
@@ -231,6 +232,7 @@ function CalendarBody() {
                       type="text"
                       value={editing.value}
                       autoFocus
+                      maxLength={30}
                       onChange={(event) =>
                         setEditing({ ...editing, value: event.target.value })
                       }

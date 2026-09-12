@@ -133,4 +133,15 @@ describe("氏名欄", () => {
     const students = await listStudents(cohortId);
     expect(students[0].name).toBe("やまだ");
   });
+
+  it("21文字目からは入力できない", async () => {
+    const user = userEvent.setup();
+    await setSetting("showStudentNames", true);
+    renderNew();
+
+    const input = await screen.findByLabelText("氏名");
+    await user.type(input, "あ".repeat(21));
+
+    expect(input).toHaveValue("あ".repeat(20));
+  });
 });

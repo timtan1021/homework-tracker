@@ -228,6 +228,39 @@ describe("未提出者・集計画面", () => {
     expect(screen.queryByText("4番")).toBeNull();
   });
 
+  it("日付を前へ送ると、その日の未提出者を確認できる", async () => {
+    const user = userEvent.setup();
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    await addSubmissionType({
+      cohortId,
+      name: "日記",
+      deadline: "23:59",
+      weekdays: [yesterday.getDay()],
+    });
+    await addStudent({ cohortId, attendanceNumber: 8 });
+
+    renderAt("/unsubmitted");
+    await screen.findByText("今日は確認する提出物がありません");
+
+    await user.click(screen.getByRole("button", { name: "← 前日" }));
+
+    expect(await screen.findByText("日記・締切23:59")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "8番" })).toBeInTheDocument();
+  });
+
+  it("今日以外を見ているときは見出しと案内の文言が変わる", async () => {
+    const user = userEvent.setup();
+    renderAt("/unsubmitted");
+
+    await screen.findByText("今日の未提出");
+    await user.click(screen.getByRole("button", { name: "← 前日" }));
+
+    expect(await screen.findByText("この日の未提出")).toBeInTheDocument();
+    expect(
+      await screen.findByText("この日は確認する提出物がありません"),
+    ).toBeInTheDocument();
+  });
+
   it("欠席にする際に保存に失敗したらエラーを表示し、セルの状態は変わらない", async () => {
     const user = userEvent.setup();
     await addSubmissionType({

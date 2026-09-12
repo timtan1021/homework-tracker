@@ -7,7 +7,7 @@ import { createCohort } from "../db/cohorts";
 import { addStudent } from "../db/students";
 import { addSubmissionType } from "../db/submissionTypes";
 import { addDateSubmission } from "../db/dateSubmissions";
-import { recordSubmission } from "../db/submissions";
+import { listSubmissions, recordSubmission } from "../db/submissions";
 import { getDb } from "../db/schema";
 import * as gradingModule from "../db/grading";
 import { formatDateHeading, toDateKey } from "../lib/date";
@@ -92,6 +92,87 @@ describe("採点画面", () => {
         }),
       ).toBeInTheDocument();
     });
+  });
+
+  it("未採点の行に「提出を取り消す」ボタンが出る", async () => {
+    renderAsTeacher("/grading");
+
+    expect(
+      await screen.findByRole("button", {
+        name: "8月24日(月)の5番（計算ドリル）の提出を取り消す",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("再提出待ちの行には「提出を取り消す」ボタンを出さない", async () => {
+    const user = userEvent.setup();
+    renderAsTeacher("/grading");
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: "8月24日(月)の5番（計算ドリル）を再提出にする",
+      }),
+    );
+    await screen.findByRole("button", {
+      name: "8月24日(月)の5番（計算ドリル）を未採点に戻す",
+    });
+
+    expect(
+      screen.queryByRole("button", { name: /提出を取り消す/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("提出を取り消すを押すと確認ダイアログが出る", async () => {
+    const user = userEvent.setup();
+    renderAsTeacher("/grading");
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: "8月24日(月)の5番（計算ドリル）の提出を取り消す",
+      }),
+    );
+
+    expect(
+      await screen.findByText("提出を取り消しますか"),
+    ).toBeInTheDocument();
+  });
+
+  it("やめるを押すと何も変わらない", async () => {
+    const user = userEvent.setup();
+    renderAsTeacher("/grading");
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: "8月24日(月)の5番（計算ドリル）の提出を取り消す",
+      }),
+    );
+    await user.click(await screen.findByRole("button", { name: "やめる" }));
+
+    expect(
+      await screen.findByRole("button", {
+        name: "8月24日(月)の5番（計算ドリル）の提出を取り消す",
+      }),
+    ).toBeInTheDocument();
+    expect(await listSubmissions(cohortId, "2026-08-24")).toHaveLength(1);
+  });
+
+  it("取り消すを押すと記録が完全に削除され未採点セクションから消える", async () => {
+    const user = userEvent.setup();
+    renderAsTeacher("/grading");
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: "8月24日(月)の5番（計算ドリル）の提出を取り消す",
+      }),
+    );
+    await user.click(await screen.findByRole("button", { name: "取り消す" }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("未採点の提出物はありません"),
+      ).toBeInTheDocument();
+    });
+    expect(await listSubmissions(cohortId, "2026-08-24")).toHaveLength(0);
   });
 
   it("再提出待ちから未採点に戻せる", async () => {

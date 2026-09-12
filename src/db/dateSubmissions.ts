@@ -2,9 +2,16 @@ import { newId } from "../lib/id";
 import { ValidationError } from "./errors";
 import { getDb, type SubmissionType } from "./schema";
 
+const MAX_NAME_LENGTH = 30;
+
 function assertValidName(name: string): void {
   if (name.trim() === "") {
     throw new ValidationError("宿題の名前を入力してください");
+  }
+  if (name.trim().length > MAX_NAME_LENGTH) {
+    throw new ValidationError(
+      `宿題の名前は${MAX_NAME_LENGTH}文字以内で入力してください`,
+    );
   }
 }
 

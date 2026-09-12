@@ -15,6 +15,7 @@ import { SubmissionList } from "./screens/SubmissionList";
 import { SubmissionNew } from "./screens/SubmissionNew";
 import { Setup } from "./screens/Setup";
 import { StudentEdit } from "./screens/StudentEdit";
+import { StudentHistory } from "./screens/StudentHistory";
 import { StudentNew } from "./screens/StudentNew";
 import { Unsubmitted } from "./screens/Unsubmitted";
 
@@ -49,6 +50,7 @@ export function AppRoutes() {
         <Route path="/roster" element={<Roster />} />
         <Route path="/roster/new" element={<StudentNew />} />
         <Route path="/roster/:id/edit" element={<StudentEdit />} />
+        <Route path="/roster/:id/history" element={<StudentHistory />} />
         <Route path="/print" element={<Print />} />
         <Route path="/scan" element={<Scan />} />
         <Route path="/settings" element={<Settings />} />

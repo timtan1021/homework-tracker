@@ -43,6 +43,17 @@ describe("addDateSubmission", () => {
     ).rejects.toThrow("宿題の名前を入力してください");
   });
 
+  it("名前が長すぎれば拒否する", async () => {
+    await expect(
+      addDateSubmission({
+        cohortId,
+        name: "あ".repeat(31),
+        date: "2026-09-01",
+        deadline: "08:15",
+      }),
+    ).rejects.toThrow("宿題の名前は30文字以内で入力してください");
+  });
+
   it("日付の形式が不正なら拒否する", async () => {
     await expect(
       addDateSubmission({

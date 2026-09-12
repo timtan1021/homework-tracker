@@ -57,6 +57,12 @@ describe("addStudent", () => {
     expect(student.name).toBe("やまだ");
   });
 
+  it("氏名が長すぎれば拒否する", async () => {
+    await expect(
+      addStudent({ cohortId, attendanceNumber: 1, name: "あ".repeat(21) }),
+    ).rejects.toThrow(new ValidationError("氏名は20文字以内で入力してください"));
+  });
+
   it("在籍中の生徒と番号が重なれば拒否する", async () => {
     await addStudent({ cohortId, attendanceNumber: 12 });
     await expect(
@@ -127,6 +133,16 @@ describe("updateStudent", () => {
 
     expect(updated.attendanceNumber).toBe(7);
     expect(updated.name).toBe("やまだ");
+  });
+
+  it("氏名が長すぎれば拒否する", async () => {
+    const student = await addStudent({ cohortId, attendanceNumber: 1 });
+    await expect(
+      updateStudent(student.id, {
+        attendanceNumber: 1,
+        name: "あ".repeat(21),
+      }),
+    ).rejects.toThrow(new ValidationError("氏名は20文字以内で入力してください"));
   });
 
   it("内部IDは変わらない", async () => {

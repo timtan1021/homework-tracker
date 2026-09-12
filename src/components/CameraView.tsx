@@ -6,17 +6,33 @@ export function CameraView({
   message,
   videoRef,
   canvasRef,
+  onStart,
 }: {
   state: CameraState;
   message: string | null;
   videoRef: RefObject<HTMLVideoElement | null>;
   canvasRef: RefObject<HTMLCanvasElement | null>;
+  onStart: () => void;
 }) {
   if (state === "unavailable" || state === "denied") {
     return (
       <p role="alert" className="py-8 text-center font-bold">
         {message}
       </p>
+    );
+  }
+
+  if (state === "idle") {
+    return (
+      <div className="flex justify-center py-8">
+        <button
+          type="button"
+          onClick={onStart}
+          className="bg-ai min-h-11 rounded px-6 py-3 font-bold text-gayoshi"
+        >
+          カメラを起動
+        </button>
+      </div>
     );
   }
 

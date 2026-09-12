@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { Link } from "react-router";
 import { CohortGate, useActiveCohort } from "../components/CohortGate";
+import { ConfirmDialog } from "../components/ConfirmDialog";
 import { DateStepper } from "../components/DateStepper";
 import { FullScreenMessage } from "../components/FullScreenMessage";
 import { clearGrade, gradeSubmission, type GradingItem } from "../db/grading";
+import { deleteSubmission } from "../db/submissions";
 import { useGradingItems } from "../hooks/useGradingItems";
 import {
   dateFromKey,
@@ -45,10 +47,12 @@ function GradingRow({
   item,
   onGrade,
   onClear,
+  onWithdraw,
 }: {
   item: GradingItem;
   onGrade: (id: string, grade: "passed" | "resubmit") => void;
   onClear?: (item: GradingItem) => void;
+  onWithdraw?: (item: GradingItem) => void;
 }) {
   const { submission, student } = item;
   const dateLabel = formatDateHeading(dateFromKey(submission.date));
@@ -73,14 +77,26 @@ function GradingRow({
           合格
         </button>
         {onClear === undefined ? (
-          <button
-            type="button"
-            aria-label={`${dateLabel}の${student.attendanceNumber}番（${item.type.name}）を再提出にする`}
-            onClick={() => onGrade(submission.id, "resubmit")}
-            className="border-ai text-ai min-h-11 rounded border-2 px-3 font-bold"
-          >
-            再提出
-          </button>
+          <>
+            <button
+              type="button"
+              aria-label={`${dateLabel}の${student.attendanceNumber}番（${item.type.name}）を再提出にする`}
+              onClick={() => onGrade(submission.id, "resubmit")}
+              className="border-ai text-ai min-h-11 rounded border-2 px-3 font-bold"
+            >
+              再提出
+            </button>
+            {onWithdraw !== undefined && (
+              <button
+                type="button"
+                aria-label={`${dateLabel}の${student.attendanceNumber}番（${item.type.name}）の提出を取り消す`}
+                onClick={() => onWithdraw(item)}
+                className="text-ai min-h-11 px-3 font-bold underline"
+              >
+                提出を取り消す
+              </button>
+            )}
+          </>
         ) : (
           <button
             type="button"
@@ -102,6 +118,9 @@ function GradingBody() {
   const [date, setDate] = useState(today);
   const items = useGradingItems(cohort.id, date);
   const [error, setError] = useState<string | null>(null);
+  const [pendingWithdraw, setPendingWithdraw] = useState<GradingItem | null>(
+    null,
+  );
 
   if (items.status === "error") {
     return <FullScreenMessage tone="error">{items.message}</FullScreenMessage>;
@@ -136,6 +155,19 @@ function GradingBody() {
           changeDate(receivedDate);
         }
       })
+      .catch((cause: unknown) => {
+        setError(
+          cause instanceof Error
+            ? cause.message
+            : "保存できませんでした。もう一度お試しください",
+        );
+      });
+  }
+
+  function withdraw(item: GradingItem): void {
+    setError(null);
+    void deleteSubmission(item.submission.id)
+      .then(() => items.reload())
       .catch((cause: unknown) => {
         setError(
           cause instanceof Error
@@ -215,6 +247,7 @@ function GradingBody() {
                     key={item.submission.id}
                     item={item}
                     onGrade={grade}
+                    onWithdraw={setPendingWithdraw}
                   />
                 ))}
               </ul>
@@ -246,6 +279,21 @@ function GradingBody() {
           ))
         )}
       </section>
+
+      {pendingWithdraw !== null && (
+        <ConfirmDialog
+          title="提出を取り消しますか"
+          message="この提出の記録を完全に削除し、未提出に戻します。元に戻せません。"
+          confirmLabel="取り消す"
+          tone="danger"
+          onCancel={() => setPendingWithdraw(null)}
+          onConfirm={() => {
+            const item = pendingWithdraw;
+            setPendingWithdraw(null);
+            withdraw(item);
+          }}
+        />
+      )}
     </main>
   );
 }

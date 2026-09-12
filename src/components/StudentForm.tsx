@@ -58,6 +58,7 @@ export function StudentForm({
           <input
             type="text"
             value={name}
+            maxLength={20}
             onChange={(event) => setName(event.target.value)}
             className="border-ai rounded border-2 px-3 py-2 text-xl"
           />

@@ -39,6 +39,17 @@ describe("読み込み", () => {
   });
 });
 
+describe("提出履歴への導線", () => {
+  it("提出履歴を見るリンクがある", async () => {
+    const student = await addStudent({ cohortId, attendanceNumber: 12 });
+    renderEdit(student.id);
+
+    expect(
+      await screen.findByRole("link", { name: "提出履歴を見る" }),
+    ).toHaveAttribute("href", `/roster/${student.id}/history`);
+  });
+});
+
 describe("保存", () => {
   it("出席番号を変えられる", async () => {
     const user = userEvent.setup();

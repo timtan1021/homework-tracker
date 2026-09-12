@@ -54,6 +54,21 @@ describe("カレンダー画面", () => {
     expect(await screen.findByText("計算プリントp23")).toBeInTheDocument();
   });
 
+  it("31文字目からは入力できない", async () => {
+    const user = userEvent.setup();
+    renderAt("/calendar");
+
+    const buttons = await screen.findAllByRole("button", {
+      name: "タップして登録",
+    });
+    await user.click(buttons[0]);
+
+    const input = await screen.findByRole("textbox");
+    await user.type(input, "あ".repeat(31));
+
+    expect(input).toHaveValue("あ".repeat(30));
+  });
+
   it("空欄のまま確定しようとするとエラーを出し登録しない", async () => {
     const user = userEvent.setup();
     renderAt("/calendar");

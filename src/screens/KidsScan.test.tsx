@@ -16,8 +16,9 @@ import { KidsScan } from "./KidsScan";
 // vi.mock はホイストされるので、掴む先は vi.hoisted で先に作る。
 const camera = vi.hoisted(() => ({
   onScan: null as ((payload: string) => void) | null,
-  state: "running" as "running" | "starting" | "unavailable" | "denied",
+  state: "running" as "idle" | "running" | "starting" | "unavailable" | "denied",
   message: null as string | null,
+  start: () => {},
 }));
 
 vi.mock("../hooks/useQrCamera", () => ({
@@ -28,6 +29,7 @@ vi.mock("../hooks/useQrCamera", () => ({
       message: camera.message,
       videoRef: { current: null },
       canvasRef: { current: null },
+      start: camera.start,
     };
   },
   cameraUnavailableReason: () => null,
@@ -301,6 +303,53 @@ describe("出せるものが無いとき", () => {
     expect(
       await screen.findByText("きょうは だすものが ありません"),
     ).toBeInTheDocument();
+  });
+});
+
+describe("取り消し", () => {
+  it("同じカードを2回読んでも「取り消す」は出ない(子供には消させない)", async () => {
+    const user = userEvent.setup();
+    await addType("かんじドリル");
+    const student = await addStudent({ cohortId, attendanceNumber: 7 });
+    renderKids();
+
+    await user.click(
+      await screen.findByRole("button", { name: /かんじドリル/ }),
+    );
+    await scanCard(student.id);
+    await screen.findByText("提出しました");
+
+    await user.click(screen.getByRole("button", { name: /かんじドリル/ }));
+    await scanCard(student.id);
+    await screen.findByText("提出済み");
+
+    expect(screen.queryByRole("button", { name: "取り消す" })).toBeNull();
+    expect(await listSubmissions(cohortId, TODAY_KEY)).toHaveLength(1);
+  });
+});
+
+describe("カメラの起動待ち", () => {
+  it("idleのときは先生を呼ばせず、起動ボタンを出す", async () => {
+    camera.state = "idle";
+    const onStart = vi.fn();
+    camera.start = onStart;
+
+    const user = userEvent.setup();
+    await addType("かんじドリル");
+    renderKids();
+
+    await user.click(
+      await screen.findByRole("button", { name: /かんじドリル/ }),
+    );
+
+    expect(
+      screen.queryByText("せんせいを よんでください"),
+    ).not.toBeInTheDocument();
+    const startButton = await screen.findByRole("button", {
+      name: "カメラを起動",
+    });
+    await user.click(startButton);
+    expect(onStart).toHaveBeenCalled();
   });
 });
 

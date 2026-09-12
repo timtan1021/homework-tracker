@@ -2,11 +2,12 @@ import { useState } from "react";
 import { Link } from "react-router";
 import { CohortGate, useActiveCohort } from "../components/CohortGate";
 import { ConfirmDialog } from "../components/ConfirmDialog";
+import { DateStepper } from "../components/DateStepper";
 import { FullScreenMessage } from "../components/FullScreenMessage";
 import { markAbsent, unmarkAbsent } from "../db/submissions";
 import { useRecentNonSubmissionCounts } from "../hooks/useRecentNonSubmissionCounts";
 import { useTodayNonSubmitters } from "../hooks/useTodayNonSubmitters";
-import { formatDateHeading, toDateKey } from "../lib/date";
+import { dateFromKey, formatDateHeading, toDateKey } from "../lib/date";
 
 /** "HH:mm" の締切まであと何分か。負の値にはならない呼び出し方を前提とする。 */
 function minutesUntil(deadline: string, now: Date): number {
@@ -23,13 +24,18 @@ type Pending = {
   action: "markAbsent" | "unmarkAbsent";
 };
 
+const DATE_LABELS = { prev: "← 前日", next: "翌日 →", backToToday: "今日へ" };
+
 function UnsubmittedBody() {
   const cohort = useActiveCohort();
 
   // 画面を開いた時点の時刻で固定する。Scan画面と同じ理由:
-  // 朝の数分で使い切る画面で、開きっぱなしを想定しない。
+  // 朝の数分で使い切る画面で、開きっぱなしを想定しない。日付送りで見ている
+  // date はこれとは別に動く。
   const [now] = useState(() => new Date());
-  const date = toDateKey(now);
+  const [today] = useState(() => toDateKey(now));
+  const [date, setDate] = useState(today);
+  const isToday = date === today;
 
   const groups = useTodayNonSubmitters(cohort.id, date, now);
   const counts = useRecentNonSubmissionCounts(cohort.id, date, now);
@@ -37,9 +43,6 @@ function UnsubmittedBody() {
   const [pending, setPending] = useState<Pending | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  if (groups.status === "loading" || counts.status === "loading") {
-    return <FullScreenMessage>読み込んでいます</FullScreenMessage>;
-  }
   if (groups.status === "error") {
     return <FullScreenMessage tone="error">{groups.message}</FullScreenMessage>;
   }
@@ -47,10 +50,18 @@ function UnsubmittedBody() {
     return <FullScreenMessage tone="error">{counts.message}</FullScreenMessage>;
   }
 
-  // 確定のたびに全画面の読み込み表示に戻る。Scan画面と違い、この画面での
-  // 書き込みは1日に数回程度で、連続してスキャンする操作ではないため、
-  // 他の多くの画面と同じ単純な挙動でよいという判断(意図的にScan画面の
-  // ちらつき防止は導入しない)。
+  // 再読み込み中は前回の一覧が無いので空として扱う。日付を送るたびに
+  // 全画面の読み込み表示に戻すと、ヘッダーとDateStepperごと消えて
+  // 押した直後の位置が分からなくなる(Grading.tsx・Scan.tsxと同じ理由)。
+  const groupsData = groups.status === "ready" ? groups.data : [];
+  const countsData = counts.status === "ready" ? counts.data : [];
+
+  function changeDate(next: string): void {
+    setDate(next);
+    setPending(null);
+    setError(null);
+  }
+
   function reload(): void {
     groups.reload();
     counts.reload();
@@ -90,12 +101,19 @@ function UnsubmittedBody() {
     <main className="mx-auto flex min-h-dvh max-w-3xl flex-col gap-6 p-4">
       <header className="border-kogan flex items-center justify-between gap-3 border-b pb-3">
         <h1 className="font-display text-ai text-2xl">
-          {formatDateHeading(now)}
+          {formatDateHeading(dateFromKey(date))}
         </h1>
         <Link to="/roster" className="text-ai shrink-0 p-2 font-bold underline">
           名簿へ
         </Link>
       </header>
+
+      <DateStepper
+        date={date}
+        today={today}
+        onChange={changeDate}
+        labels={DATE_LABELS}
+      />
 
       {error !== null && (
         <p role="alert" className="text-sm font-bold">
@@ -104,12 +122,18 @@ function UnsubmittedBody() {
       )}
 
       <section className="flex flex-col gap-5">
-        <h2 className="font-display text-ai text-xl">今日の未提出</h2>
+        <h2 className="font-display text-ai text-xl">
+          {isToday ? "今日の未提出" : "この日の未提出"}
+        </h2>
 
-        {groups.data.length === 0 ? (
-          <p>今日は確認する提出物がありません</p>
+        {groupsData.length === 0 ? (
+          <p>
+            {isToday
+              ? "今日は確認する提出物がありません"
+              : "この日は確認する提出物がありません"}
+          </p>
         ) : (
-          groups.data.map((group) => (
+          groupsData.map((group) => (
             <div key={group.type.id} className="flex flex-col gap-2">
               <div className="flex items-center justify-between gap-3">
                 <p className="font-bold">
@@ -179,11 +203,11 @@ function UnsubmittedBody() {
           直近2週間で未提出が多い生徒
         </h2>
 
-        {counts.data.length === 0 ? (
+        {countsData.length === 0 ? (
           <p>未提出はありません</p>
         ) : (
           <ul className="flex flex-col gap-2">
-            {counts.data.map(({ student, count }) => (
+            {countsData.map(({ student, count }) => (
               <li
                 key={student.id}
                 className="border-kogan flex items-center justify-between border-b pb-2"

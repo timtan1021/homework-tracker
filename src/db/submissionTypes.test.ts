@@ -88,6 +88,12 @@ describe("addSubmissionType", () => {
     );
   });
 
+  it("名前が長すぎれば拒否する", async () => {
+    await expect(drill({ name: "あ".repeat(31) })).rejects.toThrow(
+      new ValidationError("提出物の名前は30文字以内で入力してください"),
+    );
+  });
+
   it("曜日が空なら拒否する", async () => {
     await expect(drill({ weekdays: [] })).rejects.toThrow(
       new ValidationError("提出する曜日を1つ以上選んでください"),

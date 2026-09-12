@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
 import { useFreshDb } from "../test/db";
@@ -61,6 +61,21 @@ describe("保存", () => {
     expect(await listSubmissionTypes(cohortId)).toHaveLength(1);
   });
 
+  it("続けて追加すると画面に留まり入力欄が空になる", async () => {
+    const user = userEvent.setup();
+    renderNew();
+
+    await user.type(await screen.findByLabelText("提出物の名前"), "計算ドリル");
+    await user.click(
+      screen.getByRole("button", { name: "保存して続けて追加" }),
+    );
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("提出物の名前")).toHaveValue("");
+    });
+    expect(await listSubmissionTypes(cohortId)).toHaveLength(1);
+  });
+
   it("曜日を変えて保存できる", async () => {
     const user = userEvent.setup();
     renderNew();
@@ -104,6 +119,16 @@ describe("入力の検証", () => {
     expect(
       await screen.findByText("提出する曜日を1つ以上選んでください"),
     ).toBeInTheDocument();
+  });
+
+  it("31文字目からは入力できない", async () => {
+    const user = userEvent.setup();
+    renderNew();
+
+    const input = await screen.findByLabelText("提出物の名前");
+    await user.type(input, "あ".repeat(31));
+
+    expect(input).toHaveValue("あ".repeat(30));
   });
 
   it("名前が重複すればエラーを出す", async () => {

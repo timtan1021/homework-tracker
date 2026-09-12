@@ -153,10 +153,13 @@ describe("まっさらな端末でのバージョン3", () => {
     }
   });
 
-  it("バージョンが3である", async () => {
-    expect(DB_VERSION).toBe(3);
+  it("バージョンが3以上である", async () => {
+    // バージョン番号そのものではなく、v3の移行が適用されていることを
+    // 守りたい。番号を上げるたびに壊れるテストにしない
+    // (migration.test.tsと同じ理由)。
+    expect(DB_VERSION).toBeGreaterThanOrEqual(3);
 
     const db = await getDb();
-    expect(db.version).toBe(3);
+    expect(db.version).toBeGreaterThanOrEqual(3);
   });
 });

@@ -85,6 +85,13 @@ function StudentEditBody({ studentId }: { studentId: string }) {
         />
       </div>
 
+      <Link
+        to={`/roster/${student.id}/history`}
+        className="text-ai mt-6 inline-block underline"
+      >
+        提出履歴を見る
+      </Link>
+
       <section className="border-kogan mt-10 border-t pt-6">
         <h2 className="font-display text-ai text-lg">在籍の変更</h2>
 

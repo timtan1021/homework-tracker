@@ -254,6 +254,48 @@ describe("番号でチェックする", () => {
   });
 });
 
+describe("取り消し", () => {
+  it("提出済みの番号をもう一度タップすると「取り消す」が出て、押すと記録が消える", async () => {
+    const user = userEvent.setup();
+    await addType("計算ドリル");
+    await addStudent({ cohortId, attendanceNumber: 12 });
+    renderScan();
+
+    await user.click(await screen.findByRole("button", { name: "12番" }));
+    await screen.findByText("提出しました");
+    expect(screen.queryByRole("button", { name: "取り消す" })).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "12番" }));
+    await screen.findByText("提出済み");
+
+    await user.click(await screen.findByRole("button", { name: "取り消す" }));
+
+    expect(await screen.findByText("取り消しました")).toBeInTheDocument();
+    await waitFor(async () => {
+      expect(await listSubmissions(cohortId, toDateKey(TODAY))).toHaveLength(0);
+    });
+    expect(screen.queryByRole("button", { name: "取り消す" })).toBeNull();
+  });
+
+  it("日付を送ると「取り消す」は消える", async () => {
+    const user = userEvent.setup();
+    await addType("計算ドリル", [TODAY_WEEKDAY, YESTERDAY.getDay()]);
+    await addStudent({ cohortId, attendanceNumber: 12 });
+    renderScan();
+
+    await user.click(await screen.findByRole("button", { name: "12番" }));
+    await screen.findByText("提出しました");
+    await user.click(screen.getByRole("button", { name: "12番" }));
+    await screen.findByRole("button", { name: "取り消す" });
+
+    await user.click(screen.getByRole("button", { name: "← 前日" }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("button", { name: "取り消す" })).toBeNull();
+    });
+  });
+});
+
 describe("進捗", () => {
   it("提出物ごとの人数を出す", async () => {
     const user = userEvent.setup();
@@ -264,7 +306,7 @@ describe("進捗", () => {
     renderScan();
     await user.click(await screen.findByRole("button", { name: "1番" }));
 
-    expect(await screen.findByText("計算ドリル 1人")).toBeInTheDocument();
+    expect(await screen.findByText("計算ドリル 1/2人")).toBeInTheDocument();
   });
 });
 
@@ -368,7 +410,7 @@ describe("日付を送る", () => {
     await user.click(await screen.findByRole("button", { name: "12番" }));
 
     expect(
-      await screen.findByText(`${formatDateHeading(YESTERDAY)}分`),
+      await screen.findByText(`${formatDateHeading(YESTERDAY)}の記録`),
     ).toBeInTheDocument();
   });
 

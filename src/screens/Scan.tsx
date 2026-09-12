@@ -7,7 +7,11 @@ import { FullScreenMessage } from "../components/FullScreenMessage";
 import { NumberPad } from "../components/NumberPad";
 import { ScanResult } from "../components/ScanResult";
 import { SubmissionToggleBar } from "../components/SubmissionToggleBar";
-import { recordSubmission, type RecordResult } from "../db/submissions";
+import {
+  recordSubmission,
+  withdrawSubmission,
+  type RecordResult,
+} from "../db/submissions";
 import { isDueOn } from "../db/submissionTypes";
 import { useStudents } from "../hooks/useStudents";
 import { useSubmissions } from "../hooks/useSubmissions";
@@ -127,6 +131,24 @@ function ScanBody() {
     });
   }
 
+  // 「提出済み」を出した直後だけ取り消せる。提出済みの番号をもう一度タップ
+  // →「取り消す」が出る、という二段階にして、連続タップの事故で記録が
+  // 消えないようにする。
+  function withdraw(): void {
+    if (result === null || result.kind !== "already") {
+      return;
+    }
+    const student = result.student;
+    void withdrawSubmission({
+      studentId: student.id,
+      submissionTypeIds: selected,
+      date,
+    }).then(() => {
+      setResult({ kind: "withdrawn", student });
+      submissions.reload();
+    });
+  }
+
   function handleScan(payload: string): void {
     if (selected.length === 0) {
       return;
@@ -205,6 +227,7 @@ function ScanBody() {
             dateLabel={
               isToday ? undefined : formatDateHeading(dateFromKey(date))
             }
+            onWithdraw={withdraw}
           />
 
           {mode === "camera" ? (
@@ -213,6 +236,7 @@ function ScanBody() {
               message={camera.message}
               videoRef={camera.videoRef}
               canvasRef={camera.canvasRef}
+              onStart={camera.start}
             />
           ) : selected.length === 0 ? (
             <p className="py-8 text-center font-bold">
@@ -240,7 +264,7 @@ function ScanBody() {
                 const count = recorded.filter(
                   (submission) => submission.submissionTypeId === type.id,
                 ).length;
-                return `${type.name} ${count}人`;
+                return `${type.name} ${count}/${activeStudents.length}人`;
               })
               .join("・")}
           </p>
